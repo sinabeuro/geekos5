@@ -297,14 +297,14 @@ static int Sys_Mount(struct Interrupt_State *state)
 
     /* Allocate space for VFS_Mount_Request struct. */
     if ((args = (struct VFS_Mount_Request *) Malloc(sizeof(struct VFS_Mount_Request))) == 0) {
-	rc = ENOMEM;
-	goto done;
+		rc = ENOMEM;
+		goto done;
     }
 
     /* Copy the mount arguments structure from user space. */
     if (!Copy_From_User(args, state->ebx, sizeof(struct VFS_Mount_Request))) {
-	rc = EINVALID;
-	goto done;
+		rc = EINVALID;
+		goto done;
     }
 
     /*
@@ -488,7 +488,20 @@ static int Sys_Sync(struct Interrupt_State *state)
  */
 static int Sys_Format(struct Interrupt_State *state)
 {
-    TODO("Format system call");
+    char devname[BLOCKDEV_MAX_NAME_LEN];
+    char fstype[VFS_MAX_FS_NAME_LEN];
+
+    if (!Copy_From_User(devname, state->ebx, state->ecx))
+		return EINVALID;
+
+	if (!Copy_From_User(fstype, state->edx, state->esi))
+		return EINVALID;
+
+	Enable_Interrupts();
+	Format(devname, fstype);
+	Disable_Interrupts();
+    //TODO("Format system call");
+    return 0;
 }
 
 

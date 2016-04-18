@@ -56,10 +56,10 @@ int main(int argc, char **argv)
     char *command;
 
 	Init_History(&history);
+ 	Add_History_Item(&history, "/c/format.exe ide1 gosfs");
 
     /* Set attribute to gray on black. */
 	Print("\x1B[37m");
-
     while (true) {
 		/* Print shell prompt (bright cyan on black background) */
 		Print("\x1B[1;36m$\x1B[37m ");

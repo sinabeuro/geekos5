@@ -39,6 +39,13 @@
 #define GOSFS_NUM_BLOCK_PTRS \
     (GOSFS_NUM_DIRECT_BLOCKS+GOSFS_NUM_INDIRECT_BLOCKS+GOSFS_NUM_2X_INDIRECT_BLOCKS)
 
+typedef struct {
+    int magic;			/* id to tell the type of filesystem */
+    int* rootDirectoryPointer;	
+    int size;	
+    int bitmap[GOSFS_FS_BLOCK_SIZE - 12];
+} Super_Block;
+
 /*
  * A directory entry.
  * It is strongly recommended that you don't change this struct.

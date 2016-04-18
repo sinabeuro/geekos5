@@ -168,7 +168,26 @@ static int GOSFS_Sync(struct Mount_Point *mountPoint)
 
 static int GOSFS_Format(struct Block_Device *blockDev)
 {
-    TODO("GeekOS filesystem format operation");
+	Super_Block* super_block = (Super_Block*) Malloc(sizeof(Super_Block));
+	//struct GOSFS_Dir_Entry* root_dir_entry =
+	//(struct GOSFS_Dir_Entry*) Malloc(sizeof(struct GOSFS_Dir_Entry*));
+
+	memset(super_block->bitmap,0,sizeof(super_block->bitmap));
+	super_block->bitmap[0] = 1; // superblock
+	super_block->bitmap[1] = 1; // root dir
+	super_block->size = Get_Num_Blocks(blockDev)/GOSFS_SECTORS_PER_FS_BLOCK;
+	super_block->rootDirectoryPointer = 1;
+	super_block->magic = 0xDEADBEEF;	
+	Block_Write(blockDev, 0, (void*)super_block);
+
+	//Block_Read(blockDev, 0, (void*)super_block);
+
+	//Print("magic : %x\n", super_block->magic);
+    //TODO("GeekOS filesystem format operation");
+
+    Free(super_block);
+    //Free(root_dir_entry);
+    return 0;
 }
 
 static int GOSFS_Mount(struct Mount_Point *mountPoint)

@@ -618,10 +618,10 @@ static int PFAT_Mount(struct Mount_Point *mountPoint)
 
     /* Read the FAT */
     for (i = 0; i < fsinfo->fileAllocationLength; ++i) {
-	int blockNum = fsinfo->fileAllocationOffset + i;
-	char *p = ((char*)instance->fat) + (i * SECTOR_SIZE);
-	if ((rc = Block_Read(mountPoint->dev, blockNum, p)) < 0)
-	    goto fail;
+		int blockNum = fsinfo->fileAllocationOffset + i;
+		char *p = ((char*)instance->fat) + (i * SECTOR_SIZE);
+		if ((rc = Block_Read(mountPoint->dev, blockNum, p)) < 0)
+		    goto fail;
     }
     Debug("Read FAT successfully!\n");
 
@@ -632,9 +632,9 @@ static int PFAT_Mount(struct Mount_Point *mountPoint)
     /* Read the root directory */
     Debug("Root directory size = %d\n", rootDirSize);
     for (i = 0; i < rootDirSize; i += SECTOR_SIZE) {
-	int blockNum = fsinfo->rootDirectoryOffset + i;
-	if ((rc = Block_Read(mountPoint->dev, blockNum, instance->rootDir + (i*SECTOR_SIZE))) < 0)
-	    goto fail;
+		int blockNum = fsinfo->rootDirectoryOffset + i;
+		if ((rc = Block_Read(mountPoint->dev, blockNum, instance->rootDir + (i*SECTOR_SIZE))) < 0)
+		    goto fail;
     }
     Debug("Read root directory successfully!\n");
 

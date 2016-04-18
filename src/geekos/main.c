@@ -73,6 +73,7 @@ void Main(struct Boot_Info* bootInfo)
     Init_Floppy();
     Init_IDE();
     Init_PFAT();
+    Init_GOSFS();
 
     Mount_Root_Filesystem();
 

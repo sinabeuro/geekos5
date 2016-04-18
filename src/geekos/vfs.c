@@ -278,16 +278,16 @@ int Format(const char *devname, const char *fstype)
     /* Find the named filesystem type */
     fs = Lookup_Filesystem(fstype);
     if (fs == 0)
-	return ENOFILESYS;
+		return ENOFILESYS;
     Debug("Found %s filesystem type\n", fstype);
 
     /* The Format() operation is optional. */
     if (fs->ops->Format == 0)
-	return EUNSUPPORTED;
+		return EUNSUPPORTED;
 
     /* Attempt to open the block device */
     if ((rc = Open_Block_Device(devname, &dev)) < 0)
-	return rc;
+		return rc;
     Debug("Opened device %s\n", dev->name);
 
     /* Dispatch to fs Format() function. */
