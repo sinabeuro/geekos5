@@ -41,9 +41,9 @@
 
 typedef struct {
     int magic;			/* id to tell the type of filesystem */
-    int* rootDirectoryPointer;	
+    int rootDirectoryPointer;	
     int size;	
-    int bitmap[GOSFS_FS_BLOCK_SIZE - 12];
+    char bitmap[GOSFS_FS_BLOCK_SIZE - 12];
 } Super_Block;
 
 /*
@@ -57,6 +57,9 @@ struct GOSFS_Dir_Entry {
     ulong_t blockList[GOSFS_NUM_BLOCK_PTRS];	/* Pointers to direct, indirect, and doubly-indirect blocks. */
     struct VFS_ACL_Entry acl[VFS_MAX_ACL_ENTRIES];/* List of ACL entries; first is for the file's owner. */
 };
+
+/* magic number to indicate its a PFAT disk */
+#define GOSFS_MAGIC		0xDEADBEEF
 
 /* Number of directory entries that fit in a filesystem block. */
 #define GOSFS_DIR_ENTRIES_PER_BLOCK	(GOSFS_FS_BLOCK_SIZE / sizeof(struct GOSFS_Dir_Entry))

@@ -21,6 +21,24 @@
 /* ----------------------------------------------------------------------
  * Private data and functions
  * ---------------------------------------------------------------------- */
+int debugGOSFS = 0;
+#define Debug(args...) if (debugGOSFS) Print("debugGOSFS: " args)
+
+struct GOSFS_File;
+DEFINE_LIST(GOSFS_File_List, GOSFS_File);
+
+typedef struct {
+	Super_Block fsinfo;
+	struct FS_Buffer_Cache* fscache;
+	struct Mutex lock;
+	struct GOSFS_File_List fileList;
+} GOSFS_Instance;
+
+struct GOSFS_File {
+    DEFINE_LINK(GOSFS_File_List, GOSFS_File);
+};
+IMPLEMENT_LIST(GOSFS_File_List, GOSFS_File);
+
 
 /* ----------------------------------------------------------------------
  * Implementation of VFS operations
@@ -168,16 +186,17 @@ static int GOSFS_Sync(struct Mount_Point *mountPoint)
 
 static int GOSFS_Format(struct Block_Device *blockDev)
 {
-	Super_Block* super_block = (Super_Block*) Malloc(sizeof(Super_Block));
+	Super_Block* super_block = (Super_Block*)Malloc(sizeof(Super_Block));
 	//struct GOSFS_Dir_Entry* root_dir_entry =
 	//(struct GOSFS_Dir_Entry*) Malloc(sizeof(struct GOSFS_Dir_Entry*));
 
-	memset(super_block->bitmap,0,sizeof(super_block->bitmap));
-	super_block->bitmap[0] = 1; // superblock
-	super_block->bitmap[1] = 1; // root dir
+	memset(super_block->bitmap, 0, sizeof(super_block->bitmap));
+	Set_Bit((void*)super_block->bitmap, 0); // superblock
+	Set_Bit((void*)super_block->bitmap, 1); // root dir
+	Print("%d\n",Is_Bit_Set(super_block->bitmap, 1));
 	super_block->size = Get_Num_Blocks(blockDev)/GOSFS_SECTORS_PER_FS_BLOCK;
 	super_block->rootDirectoryPointer = 1;
-	super_block->magic = 0xDEADBEEF;	
+	super_block->magic = GOSFS_MAGIC;	
 	Block_Write(blockDev, 0, (void*)super_block);
 
 	//Block_Read(blockDev, 0, (void*)super_block);
@@ -192,7 +211,64 @@ static int GOSFS_Format(struct Block_Device *blockDev)
 
 static int GOSFS_Mount(struct Mount_Point *mountPoint)
 {
-    TODO("GeekOS filesystem mount operation");
+	GOSFS_Instance *instance = 0;
+	Super_Block *fsinfo;
+	void *superBlock = 0;
+	int rc;
+	int i;
+	
+	instance = (GOSFS_Instance*) Malloc(sizeof(*instance));
+    if (instance == 0)
+		goto memfail;
+	memset(instance, '\0', sizeof(*instance));
+	fsinfo = &instance->fsinfo;
+
+	superBlock = Malloc(GOSFS_FS_BLOCK_SIZE);
+    if (superBlock == 0)
+		goto memfail;
+
+    /* Read Super block */
+    if ((rc = Block_Read(mountPoint->dev, 0, superBlock)) < 0)
+		goto fail;
+
+    /* Copy filesystem parameters from super block */
+    memcpy(&instance->fsinfo, ((char*)superBlock), sizeof(Super_Block));
+    
+    /* Does magic number match? */
+    if (fsinfo->magic != GOSFS_MAGIC) {
+		Print("Bad magic number (%x) for GOSFS filesystem\n", fsinfo->magic);
+		goto invalidfs;
+    }
+ 	/* Initialize instance lock and GOSFS_File list. */
+    Mutex_Init(&instance->lock);
+    Clear_GOSFS_File_List(&instance->fileList);
+
+	/*
+	 * Create a cache of filesystem buffers.
+	 */
+    instance->fscache = Create_FS_Buffer_Cache(mountPoint->dev, fsinfo->size);
+
+    /*
+     * Success!
+     * This mount point is now ready
+     * to handle file accesses.
+     */
+    mountPoint->ops = &s_gosfsMountPointOps;
+    mountPoint->fsData = instance;
+    return 0;
+
+
+	memfail:
+		rc = ENOMEM; goto fail;
+  	
+    invalidfs:
+    	rc = EINVALIDFS; goto fail;
+   	
+    fail:
+    	return rc;
+    	
+
+    //TODO("GeekOS filesystem mount operation");
 }
 
 static struct Filesystem_Ops s_gosfsFilesystemOps = {

@@ -57,6 +57,7 @@ int main(int argc, char **argv)
 
 	Init_History(&history);
  	Add_History_Item(&history, "/c/format.exe ide1 gosfs");
+	Add_History_Item(&history, "/c/mount.exe ide1 /d gosfs");
 
     /* Set attribute to gray on black. */
 	Print("\x1B[37m");

@@ -312,8 +312,10 @@ static int Sys_Mount(struct Interrupt_State *state)
      * and invoke the Mount() VFS function.  You will need to check
      * to make sure they are correctly nul-terminated.
      */
-    TODO("Mount system call");
-
+    Enable_Interrupts();
+    Mount(args->devname, args->prefix, args->fstype);
+	Disable_Interrupts();
+	
 done:
     if (args != 0) Free(args);
     return rc;

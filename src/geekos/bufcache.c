@@ -50,11 +50,11 @@ static int Do_Buffer_IO(struct FS_Buffer_Cache *cache, struct FS_Buffer *buf,
     char *ptr = (char*) buf->data;
 
     for (offset = 0; offset < cache->fsBlockSize; offset += SECTOR_SIZE) {
-	int rc = IO_Func(cache->dev, blockNum, ptr + offset);
-	if (rc != 0)
-	    return rc;
-	++sectorCount;
-	++blockNum;
+		int rc = IO_Func(cache->dev, blockNum, ptr + offset);
+		if (rc != 0)
+		    return rc;
+		++sectorCount;
+		++blockNum;
     }
     KASSERT(offset == cache->fsBlockSize);
     KASSERT(sectorCount == Get_Num_Sectors_Per_FS_Block(cache));
@@ -109,20 +109,20 @@ static int Get_Buffer(struct FS_Buffer_Cache *cache, ulong_t fsBlockNum, struct 
      */
     buf = Get_Front_Of_FS_Buffer_List(&cache->bufferList);
     while (buf != 0) {
-	if (buf->fsBlockNum == fsBlockNum) {
-	    /* If buffer is in use, wait until it is available. */
-	    while (buf->flags & FS_BUFFER_INUSE) {
-		Debug("Waiting for block %lu\n", fsBlockNum);
-		Cond_Wait(&cache->cond, &cache->lock);
-	    }
-	    goto done;
+		if (buf->fsBlockNum == fsBlockNum) {
+		    /* If buffer is in use, wait until it is available. */
+		    while (buf->flags & FS_BUFFER_INUSE) {
+				Debug("Waiting for block %lu\n", fsBlockNum);
+				Cond_Wait(&cache->cond, &cache->lock);
+		    }
+		    goto done;
 	}
 
-	/* If buffer isn't in use, it's a candidate for LRU. */
-	if (!(buf->flags & FS_BUFFER_INUSE))
-	    lru = buf;
+		/* If buffer isn't in use, it's a candidate for LRU. */
+		if (!(buf->flags & FS_BUFFER_INUSE))
+		    lru = buf;
 
-	buf = Get_Next_In_FS_Buffer_List(buf);
+		buf = Get_Next_In_FS_Buffer_List(buf);
     }
 
     /*
@@ -130,20 +130,20 @@ static int Get_Buffer(struct FS_Buffer_Cache *cache, ulong_t fsBlockNum, struct 
      * limit, allocate a new one.
      */
     if (cache->numCached < FS_BUFFER_CACHE_MAX_BLOCKS) {
-	buf = (struct FS_Buffer*) Malloc(sizeof(*buf));
-	if (buf != 0) {
-	    buf->data = Alloc_Page();
-	    if (buf->data == 0)
-		Free(buf);
-	    else {
-		/* Successful creation */
-		buf->fsBlockNum = fsBlockNum;
-		buf->flags = 0;
-		Add_To_Front_Of_FS_Buffer_List(&cache->bufferList, buf);
-		++cache->numCached;
-		goto readAndAcquire;
-	    }
-	}
+		buf = (struct FS_Buffer*) Malloc(sizeof(*buf));
+		if (buf != 0) {
+		    buf->data = Alloc_Page();
+		    if (buf->data == 0)
+			Free(buf);
+		    else {
+			/* Successful creation */
+			buf->fsBlockNum = fsBlockNum;
+			buf->flags = 0;
+			Add_To_Front_Of_FS_Buffer_List(&cache->bufferList, buf);
+			++cache->numCached;
+			goto readAndAcquire;
+		    }
+		}
     }
     
     /*
@@ -239,7 +239,7 @@ struct FS_Buffer_Cache *Create_FS_Buffer_Cache(struct Block_Device *dev, uint_t 
 
     cache = (struct FS_Buffer_Cache*) Malloc(sizeof(*cache));
     if (cache == 0)
-	return 0;
+		return 0;
 
     cache->dev = dev;
     cache->fsBlockSize = fsBlockSize;
