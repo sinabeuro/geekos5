@@ -175,7 +175,7 @@ readAndAcquire:
 
     /* Read block data into buffer. */
     if ((rc = Do_Buffer_IO(cache, buf, Block_Read)) != 0)
-	return rc;
+		return rc;
 
 done:
     /* Buffer is now in use. */

@@ -283,6 +283,9 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 	(*pUserContext)->refCount = 0; // important
 	(*pUserContext)->pageDir = base_pde; // important
 
+	for(i=0; i < USER_MAX_FILES; i++)
+		(*pUserContext)->fileList[i] = NULL;
+
 
 	// setup LDT
 	// alloc LDT seg desc in GDT

@@ -39,6 +39,8 @@
 #define GOSFS_NUM_BLOCK_PTRS \
     (GOSFS_NUM_DIRECT_BLOCKS+GOSFS_NUM_INDIRECT_BLOCKS+GOSFS_NUM_2X_INDIRECT_BLOCKS)
 
+#define GOSFS_ROOT_DIR_BLOCK 1
+
 typedef struct {
     int magic;			/* id to tell the type of filesystem */
     int rootDirectoryPointer;	

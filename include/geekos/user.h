@@ -75,6 +75,8 @@ struct User_Context {
 #if 0
     int *semaphores;
 #endif
+	struct File* fileList[USER_MAX_FILES]; 
+
 };
 
 struct Kernel_Thread;

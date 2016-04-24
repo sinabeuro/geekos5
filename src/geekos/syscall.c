@@ -333,7 +333,32 @@ done:
  */
 static int Sys_Open(struct Interrupt_State *state)
 {
-    TODO("Open system call");
+	char path[128];
+	struct File **pFile;
+	int fd;
+	struct File** fileList = g_currentThread->userContext->fileList;
+
+	for(fd = 0; fd < USER_MAX_FILES; fd++){
+		Print("%d\n", fileList[fd]);
+		if(fileList[fd] == NULL){
+			pFile = &fileList[fd];
+			break;
+		}
+	}
+	
+	if(fd == USER_MAX_FILES)
+	{
+		Print("fuck\n");
+		return -1;
+	}
+	
+	Copy_From_User(path, state->ebx, state->ecx);
+    Enable_Interrupts();
+	Open(path, state->edx, pFile);
+	Disable_Interrupts();
+
+	return fd;
+    //TODO("Open system call");
 }
 
 /*
@@ -358,7 +383,14 @@ static int Sys_OpenDirectory(struct Interrupt_State *state)
  */
 static int Sys_Close(struct Interrupt_State *state)
 {
-    TODO("Close system call");
+	struct File *pFile;
+	int fd;
+	int rc;
+	struct File** fileList = g_currentThread->userContext->fileList;
+
+	rc = Close(fileList[state->ebx]);
+	fileList[state->ebx] = NULL;
+	return rc;
 }
 
 /*

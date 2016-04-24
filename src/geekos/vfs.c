@@ -73,7 +73,7 @@ static struct Paging_Device *s_pagingDevice;
  *   pSuffix - stores the pointer to the suffix part of path
  * Returns: true if path is valid, false if not
  */
-static bool Unpack_Path(const char *path, char *prefix, const char **pSuffix)
+bool Unpack_Path(const char *path, char *prefix, const char **pSuffix)
 {
     char *slash;
     size_t pfxLen;
@@ -82,40 +82,40 @@ static bool Unpack_Path(const char *path, char *prefix, const char **pSuffix)
 
     /* Path must start with '/' */
     if (*path != '/')
-	return false;
+		return false;
     ++path;
 
     /* Look for the initial slash. */
     slash = strchr(path, '/');
     if (slash == 0) {
-	/*
-	 * Special case: path of the form "/prefix".
-	 * It resolves to the root directory of
-	 * the filesystem mounted on the prefix.
-	 */
-	pfxLen = strlen(path);
-	if (pfxLen == 0 || pfxLen > MAX_PREFIX_LEN)
-	    return false;
-	strcpy(prefix, path);
-	*pSuffix = "/";
+		/*
+		 * Special case: path of the form "/prefix".
+		 * It resolves to the root directory of
+		 * the filesystem mounted on the prefix.
+		 */
+		pfxLen = strlen(path);
+		if (pfxLen == 0 || pfxLen > MAX_PREFIX_LEN)
+		    return false;
+		strcpy(prefix, path);
+		*pSuffix = "/";
     } else {
-	/*
-	 * Determine length of file prefix.
-	 * It needs to be non-zero, but less than MAX_PREFIX_LEN.
-	 */
-	pfxLen = slash - path;
-	if (pfxLen == 0 || pfxLen > MAX_PREFIX_LEN)
-	    return false;
+		/*
+		 * Determine length of file prefix.
+		 * It needs to be non-zero, but less than MAX_PREFIX_LEN.
+		 */
+		pfxLen = slash - path;
+		if (pfxLen == 0 || pfxLen > MAX_PREFIX_LEN)
+		    return false;
 
-	/* Format the path prefix as a string */
-	memcpy(prefix, path, pfxLen);
-	prefix[pfxLen] = '\0';
+		/* Format the path prefix as a string */
+		memcpy(prefix, path, pfxLen);
+		prefix[pfxLen] = '\0';
 
-	/*
-	 * Set pointer to "suffix", i.e., the rest of the path
-	 * after the prefix
-	 */
-	*pSuffix = slash;
+		/*
+		 * Set pointer to "suffix", i.e., the rest of the path
+		 * after the prefix
+		 */
+		*pSuffix = slash;
     }
 
     Debug("prefix=%s, suffix=%s\n", prefix, *pSuffix);
@@ -196,9 +196,9 @@ static int Do_Open(
     /* Call into actual Open() or Open_Directory() function. */
     rc = openFunc(mountPoint, suffix, mode, pFile);
     if (rc == 0) {
-	/* File opened successfully! */
-	(*pFile)->mode = mode;
-	(*pFile)->mountPoint = mountPoint;
+		/* File opened successfully! */
+		(*pFile)->mode = mode;
+		(*pFile)->mountPoint = mountPoint;
     }
     return rc;
 }

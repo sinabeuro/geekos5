@@ -103,6 +103,7 @@ struct Paging_Device {
 /*
  * VFS functions.
  */
+bool Unpack_Path(const char *path, char *prefix, const char **pSuffix);
 
 /* Filesystem operations. */
 bool Register_Filesystem(const char *fsName, struct Filesystem_Ops *fsOps);

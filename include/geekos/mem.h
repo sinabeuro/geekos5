@@ -88,8 +88,8 @@ static __inline__ bool Is_Page_Multiple(ulong_t addr)
 static __inline__ ulong_t Round_Up_To_Page(ulong_t addr)
 {
     if ((addr & PAGE_MASK) != 0) {
-	addr &= ~(PAGE_MASK);
-	addr += PAGE_SIZE;
+		addr &= ~(PAGE_MASK);
+		addr += PAGE_SIZE;
     }
     return addr;
 }
