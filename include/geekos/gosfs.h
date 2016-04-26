@@ -60,6 +60,13 @@ struct GOSFS_Dir_Entry {
     struct VFS_ACL_Entry acl[VFS_MAX_ACL_ENTRIES];/* List of ACL entries; first is for the file's owner. */
 };
 
+typedef struct {
+	char path[VFS_MAX_PATH_LEN];
+	char suffix[GOSFS_FILENAME_MAX];
+	int base;		/* Block number associated with path */ 
+	int offset;		/* Offset from block address */ 
+} Path_Info;
+
 /* magic number to indicate its a PFAT disk */
 #define GOSFS_MAGIC		0xDEADBEEF
 
