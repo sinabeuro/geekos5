@@ -339,7 +339,7 @@ static int Sys_Open(struct Interrupt_State *state)
 	struct File** fileList = g_currentThread->userContext->fileList;
 
 	for(fd = 0; fd < USER_MAX_FILES; fd++){
-		Print("%d\n", fileList[fd]);
+		//Print("%x\n", fileList[fd]);
 		if(fileList[fd] == NULL){
 			pFile = &fileList[fd];
 			break;
@@ -348,7 +348,6 @@ static int Sys_Open(struct Interrupt_State *state)
 	
 	if(fd == USER_MAX_FILES)
 	{
-		Print("fuck\n");
 		return -1;
 	}
 	

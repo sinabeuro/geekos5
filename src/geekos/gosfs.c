@@ -150,7 +150,7 @@ static int GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
     struct GOSFS_Dir_Entry* rootDir, *dir, *entry;
     struct FS_Buffer *pBuf;
     char prefix[16 + 1];
-    const char *suffix;
+    char *suffix = 0;
     int i;
     char* path = pathInfo->path;
     int retval = 0;
@@ -170,7 +170,8 @@ static int GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 		return &instance->rootDirEntry;
 
 	entry = dir = rootDir;
-	while(*suffix != '/'){ // caution
+
+	while(*suffix != '/'){ // weak
 		Unpack_Path(path, prefix, &suffix);
 		Print("%s, %s\n", prefix, suffix);
 		int minFreeEntry = 0;
@@ -239,7 +240,7 @@ static struct GOSFS_File *Get_GOSFS_File(GOSFS_Instance *instance, struct GOSFS_
 		/*
 		 * Allocate File object, GOSFS_File object.
 		 */
-		if ((gosfsFile = (struct GOSFS_File *) Malloc(sizeof(gosfsFile))) == 0 ) {
+		if ((gosfsFile = (struct GOSFS_File *) Malloc(sizeof(struct GOSFS_File))) == 0 ) {
 			goto memfail;
 		}
 
@@ -280,10 +281,10 @@ static int GOSFS_Open(struct Mount_Point *mountPoint, const char *path, int mode
 	Path_Info pathInfo;
 	struct FS_Buffer *pBuf;
 	strcpy(&pathInfo, path);
-	
+
     /* Look up the directory entry */
     if (GOSFS_Lookup(instance, &pathInfo) < 0){ 
-    	if(pathInfo.base <= 0){ /* Wrong path */
+    	if(pathInfo.base <= 0){ /* Wrong path, weak */
 	    	Print("ENOTFOUND\n");
 			return ENOTFOUND;
 		}
@@ -301,8 +302,12 @@ static int GOSFS_Open(struct Mount_Point *mountPoint, const char *path, int mode
 		   		Print("EACCESS\n");
 		   		Print("filename : %s\n", pathInfo.suffix);
 		   		strcpy(entry->filename, pathInfo.suffix);
-				entry->size = 1; /* not reasonable.. */
+				entry->size = 0; /* not reasonable.. */
 				entry->flags = GOSFS_DIRENTRY_USED;
+				int freeBit = Find_First_Free_Bit(instance->fsinfo.bitmap, GOSFS_FS_BLOCK_SIZE - 12);
+				entry->blockList[0] = freeBit;
+				Set_Bit(instance->fsinfo.bitmap, freeBit);
+				Print("free bit : %d\n", entry->blockList[0]);
 				Modify_FS_Buffer(fscache, pBuf); // need to wrapper
 				Sync_FS_Buffer_Cache(fscache);
 				Release_FS_Buffer(fscache, pBuf);

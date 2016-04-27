@@ -243,7 +243,7 @@ void Clear_Line(void)
 	//Print("clear line :%d, %d\n", startrow, startcol);
 	Put_Cursor(startrow, 2);
 	for(i = 2; i < 50; i++)
-		Put_Char(' '); // caution
+		Put_Char(' '); // weak
 	Put_Cursor(startrow, 2);
 }
 

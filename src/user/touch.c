@@ -27,7 +27,6 @@ int main(int argc, char **argv)
     }
 
     fd = Open(argv[1], O_CREATE|O_WRITE);
-	Print("fd : %d\n", fd);
     if (fd < 0)
 	Print_Error("Could not open file", fd);
     if (Close(fd) < 0)
