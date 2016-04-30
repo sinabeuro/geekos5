@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 
     rc = Create_Directory(argv[1]);
     if (rc != 0)
-	Print("Could not create directory: %s\n", Get_Error_String(rc));
+		Print("Could not create directory: %s\n", Get_Error_String(rc));
 
     return !(rc == 0);
 }

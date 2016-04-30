@@ -116,7 +116,7 @@ static int Get_Buffer(struct FS_Buffer_Cache *cache, ulong_t fsBlockNum, struct 
 				Cond_Wait(&cache->cond, &cache->lock);
 		    }
 		    goto done;
-	}
+		}
 
 		/* If buffer isn't in use, it's a candidate for LRU. */
 		if (!(buf->flags & FS_BUFFER_INUSE))
@@ -151,7 +151,7 @@ static int Get_Buffer(struct FS_Buffer_Cache *cache, ulong_t fsBlockNum, struct 
      * the number of available buffers.
      */
     if (lru == 0)
-	return ENOMEM;
+		return ENOMEM;
 
     KASSERT(!noEvict);
 

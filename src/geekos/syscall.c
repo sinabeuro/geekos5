@@ -333,13 +333,13 @@ done:
  */
 static int Sys_Open(struct Interrupt_State *state)
 {
-	char path[128];
+	char path[VFS_MAX_PATH_LEN];
 	struct File **pFile;
 	int fd;
+	int rc;
 	struct File** fileList = g_currentThread->userContext->fileList;
 
 	for(fd = 0; fd < USER_MAX_FILES; fd++){
-		//Print("%x\n", fileList[fd]);
 		if(fileList[fd] == NULL){
 			pFile = &fileList[fd];
 			break;
@@ -353,7 +353,9 @@ static int Sys_Open(struct Interrupt_State *state)
 	
 	Copy_From_User(path, state->ebx, state->ecx);
     Enable_Interrupts();
-	Open(path, state->edx, pFile);
+	if((rc = Open(path, state->edx, pFile)) < 0){
+		fd = rc;
+	}
 	Disable_Interrupts();
 
 	return fd;
@@ -402,7 +404,18 @@ static int Sys_Close(struct Interrupt_State *state)
  */
 static int Sys_Delete(struct Interrupt_State *state)
 {
-    TODO("Delete system call");
+	char path[VFS_MAX_PATH_LEN];
+	int rc;
+
+	Copy_From_User(path, state->ebx, state->ecx);
+	Enable_Interrupts();
+	if((rc = Delete(path)) < 0){
+		;
+	}
+	Disable_Interrupts();
+	return rc;
+
+    //TODO("Delete system call");
 }
 
 /*
@@ -497,7 +510,17 @@ static int Sys_Seek(struct Interrupt_State *state)
  */
 static int Sys_CreateDir(struct Interrupt_State *state)
 {
-    TODO("CreateDir system call");
+	char path[VFS_MAX_PATH_LEN];
+	int rc;
+
+	Copy_From_User(path, state->ebx, state->ecx);
+    Enable_Interrupts();
+	if((rc = Create_Directory(path)) < 0){
+		;
+	}
+	Disable_Interrupts();
+	return rc;
+    //TODO("CreateDir system call");
 }
 
 /*

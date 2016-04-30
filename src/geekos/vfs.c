@@ -60,8 +60,6 @@ static struct Filesystem_List s_filesystemList;
 /* Registered paging device. */
 static struct Paging_Device *s_pagingDevice;
 
-#define MAX_PREFIX_LEN 16
-
 /*
  * Unpack a path into prefix and suffix.
  * The prefix determines which mounted filesystem
