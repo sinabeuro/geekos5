@@ -488,6 +488,7 @@ static int GOSFS_Open_Directory(struct Mount_Point *mountPoint, const char *path
  */
 static int GOSFS_Delete(struct Mount_Point *mountPoint, const char *path)
 {
+	int i;
 	int rc = 0;
 	int retval = 0;
 	struct GOSFS_Dir_Entry* entry = 0;
@@ -507,25 +508,33 @@ static int GOSFS_Delete(struct Mount_Point *mountPoint, const char *path)
 		goto done;
 	}
 	else{
-		Print("FOUND\n");
-		if(entry->flags & GOSFS_DIRENTRY_USED)
-		{
-			;
-		}
-		else if(entry->flags & GOSFS_DIRENTRY_ISDIRECTORY)
-		{
- 			;	/* Check if empty.. */
-		}
+		Print("FOUND\n");		
 
 		if(Get_FS_Buffer(fscache, pathInfo.dirEntryPtr.base, &pBuf) != 0)
 	    {    	
 			Print("Get_FS_Buffer Error.\n");
 	    	return -1;
 	    }
-
-		Debug("filename : %s\n", pathInfo.suffix);
-
+	    
 	    entry = &((struct GOSFS_Dir_Entry*)pBuf->data)[pathInfo.dirEntryPtr.offset];
+		Debug("flags : %d\n", entry->flags);
+
+	    if(entry->flags & GOSFS_DIRENTRY_USED)
+		{
+			;
+		}
+		else if(entry->flags & GOSFS_DIRENTRY_ISDIRECTORY)
+		{
+			/* Check if empty.. */
+			for (i = 0; i < GOSFS_DIR_ENTRIES_PER_BLOCK; ++i) {
+				if ((&entry[i])->flags != 0){
+					rc = EUNSPECIFIED;
+					Release_FS_Buffer(fscache, pBuf);
+					goto done;
+				}
+			}	
+		}
+		
 		Print("next blk : %d\n", entry->blockList[0]);
 		
 		/* Need to consider crash */
