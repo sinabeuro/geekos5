@@ -62,10 +62,14 @@ struct GOSFS_Dir_Entry {
 };
 
 typedef struct {
-	char path[VFS_MAX_PATH_LEN];
-	char suffix[GOSFS_FILENAME_MAX];
 	int base;		/* Block number associated with path */ 
 	int offset;		/* Offset from block address */ 
+} Dir_Entry_Ptr;
+
+typedef struct {
+	char path[VFS_MAX_PATH_LEN];
+	char suffix[GOSFS_FILENAME_MAX];
+	Dir_Entry_Ptr dirEntryPtr;
 } Path_Info;
 
 /* magic number to indicate its a PFAT disk */

@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     ret = Mount(argv[1], argv[2], argv[3]);
     if (ret != 0) {
         Print("Mount failed: %s\n", Get_Error_String(ret));
-	Exit (1);
+		Exit (1);
     }
 
     return 0;

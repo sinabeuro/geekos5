@@ -23,7 +23,7 @@
 /* ----------------------------------------------------------------------
  * Private data and functions
  * ---------------------------------------------------------------------- */
-int debugGOSFS = 0;
+int debugGOSFS = 1;
 #define Debug(args...) if (debugGOSFS) Print("debugGOSFS: " args)
 
 struct GOSFS_File;
@@ -38,9 +38,8 @@ typedef struct {
 } GOSFS_Instance;
 
 struct GOSFS_File {
-    struct GOSFS_Dir_Entry *entry;	/* Directory entry of the file */
+    Dir_Entry_Ptr dirEntryPtr;		/* Entry informations of file */
     struct FS_Buffer *pBuf;			/* Buffer of file */
-    ulong_t numBlocks;			 	/* Number of blocks used by file */
     struct Mutex lock;			 	/* Synchronize concurrent accesses */
     DEFINE_LINK(GOSFS_File_List, GOSFS_File);
 };
@@ -156,27 +155,32 @@ static int GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
     char* path = pathInfo->path;
 	int retval = 0;
 	int base = superBlock->rootDirectoryPointer;
-
 	int minFreeEntry;
 
     KASSERT(*path == '/');
 
     /* Special case: root directory. */
-    if (strcmp(path, "/") == 0)
+    if (strcmp(path, "/") == 0){
 		return &instance->rootDirEntry;
+	}
 
 	while(strcmp(suffix, "/") != 0){ // weak
 		Unpack_Path(path, prefix, &suffix);
 		Print("%s, %s\n", prefix, suffix);
 		minFreeEntry = -1;
 
+		KASSERT(base != 0);
 		if(Get_FS_Buffer(fscache, base, &pBuf) != 0)
 		{		
 			Print("Get_FS_Buffer Error.\n");
 			return EUNSPECIFIED;
 		}
 		
-		entry = dir = (struct GOSFS_Dir_Entry*)pBuf->data;
+		entry = dir = (struct GOSFS_Dir_Entry*)(pBuf->data);
+		Print("blkNum : %d\n", pBuf->fsBlockNum);
+		Print("size0 : %d\n", (&entry[0])->size);
+		Print("entry0 : %s\n", (&entry[0])->filename);
+		Print("entry1 : %s\n", (&entry[1])->filename);
 		
 	    for (i = 0; i < GOSFS_DIR_ENTRIES_PER_BLOCK; ++i) {
 	    	entry = &dir[i];
@@ -191,7 +195,7 @@ static int GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 					!(entry->flags & GOSFS_DIRENTRY_USED) && 
 					!(entry->flags & GOSFS_DIRENTRY_ISDIRECTORY)){
 						minFreeEntry = i;
-						Print("minFreeEntry : %d\n", minFreeEntry);
+						Print("minFreeEntry : %d, %d\n", minFreeEntry, entry->flags);
 					}
 			else{
 				;
@@ -200,8 +204,8 @@ static int GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 
 	    if(i == GOSFS_DIR_ENTRIES_PER_BLOCK){ // There is no entry matched
 	    	Print("There is no entry matched\n");
-	    	pathInfo->base = base; // need to modify
-			pathInfo->offset = minFreeEntry;
+	    	pathInfo->dirEntryPtr.base = base; // need to modify
+			pathInfo->dirEntryPtr.offset = minFreeEntry;
 			strcpy(pathInfo->suffix, prefix);
 	    	retval = (strcmp(suffix,"/") == 0)? EUNSPECIFIED : ENOTFOUND;
 			Release_FS_Buffer(fscache, pBuf);
@@ -209,8 +213,8 @@ static int GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 	    }
 	   	else{
 	   		path = suffix;
-   			pathInfo->base = base; // need to modify
-			pathInfo->offset = i; // weak
+   			pathInfo->dirEntryPtr.base = base; // need to modify
+			pathInfo->dirEntryPtr.offset = i; // weak
 			strcpy(pathInfo->suffix, prefix);
 			Release_FS_Buffer(fscache, pBuf);
 			base = entry->blockList[0];
@@ -224,12 +228,12 @@ static int GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
  * Get a GOSFS_File object representing the file whose directory entry
  * is given.
  */
-static struct GOSFS_File *Get_GOSFS_File(GOSFS_Instance *instance, struct GOSFS_Dir_Entry *entry)
+static struct GOSFS_File *Get_GOSFS_File(GOSFS_Instance* instance, Dir_Entry_Ptr* dirEntryPtr)
 {
     ulong_t numBlocks;
 	struct GOSFS_File *gosfsFile = 0;
 
-    KASSERT(entry != 0);
+    KASSERT(dirEntryPtr != 0);
     KASSERT(instance != 0);
 
     Mutex_Lock(&instance->lock);
@@ -241,13 +245,14 @@ static struct GOSFS_File *Get_GOSFS_File(GOSFS_Instance *instance, struct GOSFS_
     for (gosfsFile= Get_Front_Of_GOSFS_File_List(&instance->fileList);
 			gosfsFile != 0;
 	 		gosfsFile = Get_Next_In_GOSFS_File_List(gosfsFile)) {
-		if (gosfsFile->entry == entry)
+		if (gosfsFile->dirEntryPtr.base == dirEntryPtr->base &&
+			gosfsFile->dirEntryPtr.offset == dirEntryPtr->offset )
 		    break;
     }
 			
 	if (gosfsFile == 0) {
 		/* Determine size of data block cache for file. */
-		numBlocks = Round_Up_To_Block(entry->size) / SECTOR_SIZE;
+		//numBlocks = Round_Up_To_Block(entry->size) / SECTOR_SIZE;
 
 		/*
 		 * Allocate File object, GOSFS_File object.
@@ -257,8 +262,8 @@ static struct GOSFS_File *Get_GOSFS_File(GOSFS_Instance *instance, struct GOSFS_
 		}
 
 		/* Populate GOSFS_File */
-		gosfsFile->entry = entry;
-		gosfsFile->numBlocks = numBlocks;
+		memcpy(&(gosfsFile->dirEntryPtr), dirEntryPtr, sizeof(Dir_Entry_Ptr));
+		//gosfsFile->numBlocks = numBlocks;
 		Mutex_Init(&gosfsFile->lock);
 
 		/* Add to instance's list of GOSFS_File objects. */
@@ -291,24 +296,26 @@ static int GOSFS_Open(struct Mount_Point *mountPoint, const char *path, int mode
 	struct GOSFS_File *gosfsFile = 0;
 	struct File *file = 0;
 	struct FS_Buffer_Cache* fscache = instance->fscache;
-	Path_Info pathInfo;
 	struct FS_Buffer *pBuf;
+	Path_Info pathInfo;
 	strcpy(&pathInfo, path);
-	pathInfo.base = GOSFS_SUPER_BLOCK;
+	pathInfo.dirEntryPtr.base = GOSFS_SUPER_BLOCK;
 
     /* Look up the directory entry */
     if ((retval = GOSFS_Lookup(instance, &pathInfo)) < 0){ 
     	if(retval == ENOTFOUND){ /* Wrong path, weak */
-			return ENOTFOUND;
+			rc = ENOTFOUND;
+			goto fail;
 		}
 		else
 		{	
-			if(Get_FS_Buffer(fscache, pathInfo.base, &pBuf) != 0)
+			if(Get_FS_Buffer(fscache, pathInfo.dirEntryPtr.base, &pBuf) != 0)
 		    {    	
 				Print("Get_FS_Buffer Error.\n");
-		    	return -1;
+		    	rc = EUNSPECIFIED;
+		    	goto fail;
 		    }
-		    entry = &((struct GOSFS_Dir_Entry*)pBuf->data)[pathInfo.offset];
+		    entry = &((struct GOSFS_Dir_Entry*)pBuf->data)[pathInfo.dirEntryPtr.offset];
 
 		    /* There is no file, so create file */
 		    if (mode & O_CREATE){
@@ -331,39 +338,44 @@ static int GOSFS_Open(struct Mount_Point *mountPoint, const char *path, int mode
 			}
 		}
 	}
-	else
-	{
+	else{
 		Print("FOUND\n");
-		if(Get_FS_Buffer(fscache, pathInfo.base, &pBuf) != 0)
+		if(Get_FS_Buffer(fscache, pathInfo.dirEntryPtr.base, &pBuf) != 0)
 	    {    	
 			Print("Get_FS_Buffer Error.\n");
-	    	return -1;
+			rc = EUNSPECIFIED;
+			goto fail;
+
 	    }
-	    entry = &((struct GOSFS_Dir_Entry*)pBuf->data)[pathInfo.offset];
+	    entry = &((struct GOSFS_Dir_Entry*)pBuf->data)[pathInfo.dirEntryPtr.offset];
 	    int flags = entry->flags;
 
 	    Print("blockList[0] : %d\n", entry->blockList[0]);
 
 	    if(flags == GOSFS_DIRENTRY_ISDIRECTORY){
 	    	rc = EACCESS;
-	    	goto done;
+	    	goto fail;
 	    }	
 	}
 
 	/* Get GOSFS_File object */
-    gosfsFile = Get_GOSFS_File(instance, entry);
-    if (gosfsFile == 0)
-    	goto done;
+    gosfsFile = Get_GOSFS_File(instance, &(pathInfo.dirEntryPtr));
+    if (gosfsFile == 0){
+    	rc = EUNSPECIFIED;
+    	goto fail;
+    }
 
 	/* Create the file object. */
 	file = Allocate_File(&s_gosfsFileOps, 0, entry->size, gosfsFile, mode, mountPoint);
 	if (file == 0) {
 		rc = ENOMEM;
-		goto done;
+		goto fail;
 	}
 
 	/* Success! */
 	*pFile = file;
+
+	fail:
 	
 	done:
 	    Release_FS_Buffer(fscache, pBuf);
@@ -387,35 +399,37 @@ static int GOSFS_Create_Directory(struct Mount_Point *mountPoint, const char *pa
 	Path_Info pathInfo;
 	struct FS_Buffer *pBuf;
 	strcpy(&pathInfo, path);
-	pathInfo.base = GOSFS_SUPER_BLOCK;
+	pathInfo.dirEntryPtr.base = GOSFS_SUPER_BLOCK;
+
+		
 
     /* Look up the directory entry */
     if ((retval = GOSFS_Lookup(instance, &pathInfo)) < 0){ 
     	if(retval == ENOTFOUND){ /* Wrong path, weak */
-			Print("ENOTFOUND\n");
+			Debug("ENOTFOUND\n");
 			rc = ENOTFOUND;
 			goto done;
 		}
 		else
 		{	
-			if(Get_FS_Buffer(fscache, pathInfo.base, &pBuf) != 0)
+			if(Get_FS_Buffer(fscache, pathInfo.dirEntryPtr.base, &pBuf) != 0)
 			{		
-				Print("Get_FS_Buffer Error.\n");
+				Debug("Get_FS_Buffer Error.\n");
 				rc = EUNSPECIFIED;
 				goto done;
 			}
-			entry = &((struct GOSFS_Dir_Entry*)pBuf->data)[pathInfo.offset];
+			entry = &((struct GOSFS_Dir_Entry*)pBuf->data)[pathInfo.dirEntryPtr.offset];
 
 			/* There is no directory, so create directory */
-			Print("EACCESS\n");
-			Print("filename : %s\n", pathInfo.suffix);
+			Debug("EACCESS\n");
+			Debug("filename : %s\n", pathInfo.suffix);
 			strcpy(entry->filename, pathInfo.suffix);
 			entry->size = 0; /* not reasonable.. */
 			entry->flags = GOSFS_DIRENTRY_ISDIRECTORY;
 
 			Super_Block* superBlock = (Super_Block*)instance->fsinfo->data;
 			int freeBit = Find_First_Free_Bit(superBlock->bitmap, GOSFS_FS_BLOCK_SIZE - 12);
-			Print("freeBit : %d\n", freeBit);
+			Debug("freeBit : %d\n", freeBit);
 			entry->blockList[0] = freeBit;
 			Set_Bit(superBlock->bitmap, freeBit);
 
@@ -423,6 +437,27 @@ static int GOSFS_Create_Directory(struct Mount_Point *mountPoint, const char *pa
 			Modify_FS_Buffer(fscache, instance->fsinfo); // Superblock
 			Sync_FS_Buffer_Cache(fscache);
 			Release_FS_Buffer(fscache, pBuf);
+			
+			if(Get_FS_Buffer(fscache, freeBit, &pBuf) != 0)
+			{		
+				Debug("Get_FS_Buffer Error.\n");
+				rc = EUNSPECIFIED;
+				goto done;
+			}			
+			entry = (struct GOSFS_Dir_Entry*)pBuf->data;
+			strcpy(entry[0].filename, ".");
+			entry[0].flags = GOSFS_DIRENTRY_ISDIRECTORY;
+			entry[0].blockList[0] = freeBit;
+			entry[0].size = 1*GOSFS_FS_BLOCK_SIZE;
+			strcpy(entry[1].filename, "..");
+			entry[1].flags = GOSFS_DIRENTRY_ISDIRECTORY;
+			entry[1].blockList[0] = pathInfo.dirEntryPtr.base;
+			entry[1].size = 1*GOSFS_FS_BLOCK_SIZE;
+
+			Modify_FS_Buffer(fscache, pBuf); // need to wrapper
+			Sync_FS_Buffer_Cache(fscache);
+			Release_FS_Buffer(fscache, pBuf);
+
 			rc = 0;
 			goto done;
 
@@ -453,7 +488,75 @@ static int GOSFS_Open_Directory(struct Mount_Point *mountPoint, const char *path
  */
 static int GOSFS_Delete(struct Mount_Point *mountPoint, const char *path)
 {
-    TODO("GeekOS filesystem delete operation");
+	int rc = 0;
+	int retval = 0;
+	struct GOSFS_Dir_Entry* entry = 0;
+	GOSFS_Instance *instance = (GOSFS_Instance*) mountPoint->fsData;
+	//struct GOSFS_File *gosfsFile = 0;
+	//struct File *file = 0;
+	struct FS_Buffer_Cache* fscache = instance->fscache;
+	Path_Info pathInfo;
+	struct FS_Buffer *pBuf, *pBuf_1;
+	strcpy(&pathInfo, path);
+	pathInfo.dirEntryPtr.base = GOSFS_SUPER_BLOCK;
+
+    /* Look up the directory entry */
+    if ((retval = GOSFS_Lookup(instance, &pathInfo)) < 0){ 
+		Print("ENOTFOUND\n");
+		rc = ENOTFOUND;
+		goto done;
+	}
+	else{
+		Print("FOUND\n");
+		if(entry->flags & GOSFS_DIRENTRY_USED)
+		{
+			;
+		}
+		else if(entry->flags & GOSFS_DIRENTRY_ISDIRECTORY)
+		{
+ 			;	/* Check if empty.. */
+		}
+
+		if(Get_FS_Buffer(fscache, pathInfo.dirEntryPtr.base, &pBuf) != 0)
+	    {    	
+			Print("Get_FS_Buffer Error.\n");
+	    	return -1;
+	    }
+
+		Debug("filename : %s\n", pathInfo.suffix);
+
+	    entry = &((struct GOSFS_Dir_Entry*)pBuf->data)[pathInfo.dirEntryPtr.offset];
+		Print("next blk : %d\n", entry->blockList[0]);
+		
+		/* Need to consider crash */
+		Super_Block* superBlock = (Super_Block*)instance->fsinfo->data;
+		Clear_Bit(superBlock->bitmap, entry->blockList[0]);
+		Modify_FS_Buffer(fscache, instance->fsinfo); // Superblock
+		
+		if(Get_FS_Buffer(fscache, entry->blockList[0], &pBuf_1) != 0)
+	    {    	
+			Print("Get_FS_Buffer Error.\n");
+	    	return -1;
+	    }
+	    memset(pBuf_1->data, '\0', GOSFS_FS_BLOCK_SIZE); /* fill zero in the block */
+	    memset(entry, '\0', sizeof(struct GOSFS_Dir_Entry)); /* fill zero in the entry */
+
+		Modify_FS_Buffer(fscache, pBuf); // need to wrapper
+		Modify_FS_Buffer(fscache, pBuf_1); // need to wrapper
+
+		Sync_FS_Buffer_Cache(fscache);
+		Release_FS_Buffer(fscache, pBuf);
+		Release_FS_Buffer(fscache, pBuf_1);	
+
+		rc = 0;
+
+
+	}
+	
+	done:
+		return rc;
+
+    //TODO("GeekOS filesystem delete operation");
 }
 
 /*
@@ -485,21 +588,45 @@ static int GOSFS_Sync(struct Mount_Point *mountPoint)
 static int GOSFS_Format(struct Block_Device *blockDev)
 {
 	Super_Block* super_block = (Super_Block*)Malloc(sizeof(Super_Block));
-	//struct GOSFS_Dir_Entry* root_dir_entry =
+	struct GOSFS_Dir_Entry root_dir_entry[GOSFS_DIR_ENTRIES_PER_BLOCK];
+	uint_t offset;
+	int blockNum;
 	//(struct GOSFS_Dir_Entry*) Malloc(sizeof(struct GOSFS_Dir_Entry*));
 
+	/* Make Superblock */
 	memset(super_block->bitmap, 0, sizeof(super_block->bitmap));
 	Set_Bit((void*)super_block->bitmap, GOSFS_SUPER_BLOCK); // superblock
 	Set_Bit((void*)super_block->bitmap, GOSFS_ROOT_DIR_BLOCK); // root dir
-	Print("%d\n",Is_Bit_Set(super_block->bitmap, 1));
 	super_block->size = Get_Num_Blocks(blockDev)/GOSFS_SECTORS_PER_FS_BLOCK;
 	super_block->rootDirectoryPointer = GOSFS_ROOT_DIR_BLOCK;
 	super_block->magic = GOSFS_MAGIC;	
-	Block_Write(blockDev, 0, (void*)super_block);
-	
-	//Block_Read(blockDev, 0, (void*)super_block);
 
-	//Print("magic : %x\n", super_block->magic);
+	blockNum = GOSFS_SUPER_BLOCK * GOSFS_SECTORS_PER_FS_BLOCK;
+	for (offset = 0; offset < GOSFS_FS_BLOCK_SIZE; offset += SECTOR_SIZE) {
+		int rc = Block_Write(blockDev, blockNum, (char*)super_block + offset);
+		if (rc != 0)
+		    return rc;
+		++blockNum;
+    }
+    
+	/* Make Root diretory entry */
+	strcpy(root_dir_entry[0].filename, ".");
+	root_dir_entry[0].flags = GOSFS_DIRENTRY_ISDIRECTORY;
+	root_dir_entry[0].blockList[0] = GOSFS_ROOT_DIR_BLOCK;
+	root_dir_entry[0].size = 1*GOSFS_FS_BLOCK_SIZE;
+	strcpy(root_dir_entry[1].filename, "..");
+	root_dir_entry[1].flags = GOSFS_DIRENTRY_ISDIRECTORY;
+	root_dir_entry[1].blockList[0] = GOSFS_ROOT_DIR_BLOCK;
+	root_dir_entry[1].size = 1*GOSFS_FS_BLOCK_SIZE;
+
+	blockNum = GOSFS_ROOT_DIR_BLOCK * GOSFS_SECTORS_PER_FS_BLOCK;
+	for (offset = 0; offset < GOSFS_FS_BLOCK_SIZE; offset += SECTOR_SIZE) {
+		int rc = Block_Write(blockDev, blockNum, (char*)root_dir_entry + offset);
+		if (rc != 0)
+		    return rc;
+		++blockNum;
+    }
+	
     //TODO("GeekOS filesystem format operation");
 
     Free(super_block);
@@ -509,16 +636,17 @@ static int GOSFS_Format(struct Block_Device *blockDev)
 
 static int GOSFS_Mount(struct Mount_Point *mountPoint)
 {
+	struct GOSFS_Dir_Entry rentry[GOSFS_DIR_ENTRIES_PER_BLOCK];
+
 	GOSFS_Instance *instance = 0;
 	Super_Block *superBlock;
 	struct FS_Buffer *pBuf;
-	int rc;
-	int i;
+	int rc;	
 	
-	instance = (GOSFS_Instance*) Malloc(sizeof(*instance));
+	instance = (GOSFS_Instance*)Malloc(sizeof(GOSFS_Instance));
     if (instance == 0)
 		goto memfail;
-	memset(instance, '\0', sizeof(*instance));
+	memset(instance, '\0', sizeof(GOSFS_Instance));
 	
 	/*
 	 * Create a cache of filesystem buffers.
@@ -532,7 +660,7 @@ static int GOSFS_Mount(struct Mount_Point *mountPoint)
 
 	instance->fsinfo = pBuf;
 	superBlock = (Super_Block *)instance->fsinfo->data; 
-	Print("rootDir : %d\n", superBlock->rootDirectoryPointer);
+	//Print("rootDir : %d\n", superBlock->rootDirectoryPointer);
 
     /* Does magic number match? */
     if (superBlock->magic != GOSFS_MAGIC) {
@@ -557,6 +685,17 @@ static int GOSFS_Mount(struct Mount_Point *mountPoint)
      */
     mountPoint->ops = &s_gosfsMountPointOps;
     mountPoint->fsData = instance;
+
+	Get_FS_Buffer(instance->fscache, 1, &pBuf);
+	struct GOSFS_Dir_Entry* entry = 0;
+
+	entry = (struct GOSFS_Dir_Entry*)(pBuf->data);
+			Print("blkNum : %d\n", pBuf->fsBlockNum);
+			Print("size0 : %d\n", (&entry[0])->size);
+			Print("entry0 : %s\n", (&entry[0])->filename);
+			Print("entry1 : %s\n", (&entry[1])->filename);
+
+	Release_FS_Buffer(instance->fscache, pBuf);
     return 0;
 
 

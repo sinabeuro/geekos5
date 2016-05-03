@@ -42,38 +42,39 @@ int main(int argc, char **argv)
 
     rc = Stat(filename, &stat);
     if (rc != 0) {
-	Print("Could not stat %s: %s\n", argv[1], Get_Error_String(rc));
-	return 1;
+		Print("Could not stat %s: %s\n", argv[1], Get_Error_String(rc));
+		return 1;
     }
 
     if (!stat.isDirectory) {
-	List_File(argv[1], &stat);
-    } else {
-	int fd = Open_Directory(argv[1]);
-	struct VFS_Dir_Entry dirent;
+		List_File(argv[1], &stat);
+    } 
+	else {
+		int fd = Open_Directory(argv[1]);
+		struct VFS_Dir_Entry dirent;
 
-	if (fd < 0) {
-	    Print("Could not open %s: %s\n", filename, Get_Error_String(fd));
-	    Exit(1);
-	}
+		if (fd < 0) {
+			Print("Could not open %s: %s\n", filename, Get_Error_String(fd));
+			Exit(1);
+		}
 
-	Print("Directory %s\n", filename);
-	for (;;) {
-	    int rc = Read_Entry(fd, &dirent);
-	    if (rc > 0)
-		break;
-	    else if (rc == 0)
-		List_File(dirent.name, &dirent.stats);
-	    else {
-		Print("Could not read directory entry: %s\n", Get_Error_String(rc));
-		Exit(1);
-	    }
-	}
+		Print("Directory %s\n", filename);
+		for (;;) {
+			int rc = Read_Entry(fd, &dirent);
+			if (rc > 0)
+				break;
+			else if (rc == 0)
+				List_File(dirent.name, &dirent.stats);
+			else {
+				Print("Could not read directory entry: %s\n", Get_Error_String(rc));
+				Exit(1);
+			}
+		}
 
-	if ((rc = Close(fd)) < 0) {
-	    Print("Could not close directory %s: %s\n", filename, Get_Error_String(rc));
-	    Exit(1);
-	}
+		if ((rc = Close(fd)) < 0) {
+		    Print("Could not close directory %s: %s\n", filename, Get_Error_String(rc));
+		    Exit(1);
+		}
     }
 
     return 0;
