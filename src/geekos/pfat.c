@@ -629,13 +629,16 @@ static int PFAT_Mount(struct Mount_Point *mountPoint)
     rootDirSize = Round_Up_To_Block(sizeof(directoryEntry) * fsinfo->rootDirectoryCount);
     instance->rootDir = (directoryEntry*) Malloc(rootDirSize);
 
-    /* Read the root directory */
-    Debug("Root directory size = %d\n", rootDirSize);
-    for (i = 0; i < rootDirSize; i += SECTOR_SIZE) {
-		int blockNum = fsinfo->rootDirectoryOffset + i;
-		if ((rc = Block_Read(mountPoint->dev, blockNum, instance->rootDir + (i*SECTOR_SIZE))) < 0)
-		    goto fail;
-    }
+    /* Read the root directory 
+      * Bug FIX : 
+      */
+	Debug("Root directory size = %d\n", rootDirSize);
+		for (i = 0; i < rootDirSize/SECTOR_SIZE; ++i) {
+			int blockNum = fsinfo->rootDirectoryOffset + i;
+			//Print("%d ", blockNum);
+			if ((rc = Block_Read(mountPoint->dev, blockNum, ((char*)instance->rootDir) + (i*SECTOR_SIZE))) < 0)
+				goto fail;
+	}
     Debug("Read root directory successfully!\n");
 
     /* Create the fake root directory entry. */

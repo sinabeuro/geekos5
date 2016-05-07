@@ -373,7 +373,34 @@ static int Sys_Open(struct Interrupt_State *state)
  */
 static int Sys_OpenDirectory(struct Interrupt_State *state)
 {
-    TODO("Open directory system call");
+	char path[VFS_MAX_PATH_LEN];
+	struct File **pDir; /* important */
+	int fd;
+	int rc;
+	struct File** fileList = g_currentThread->userContext->fileList;
+
+	for(fd = 0; fd < USER_MAX_FILES; fd++){
+		if(fileList[fd] == NULL){
+			pDir = &fileList[fd];
+			break;
+		}
+	}
+	
+	if(fd == USER_MAX_FILES)
+	{
+		return -1;
+	}
+
+	Copy_From_User(path, state->ebx, state->ecx);
+    Enable_Interrupts();			
+	if((rc = Open_Directory(path, pDir)) < 0){ /* important */
+		fd = rc;
+	}
+	Print("%d, fileList[fd] : %x\n", fd, fileList[fd]);
+	Disable_Interrupts();
+
+	return fd;
+    //TODO("Open directory system call");
 }
 
 /*
@@ -442,7 +469,16 @@ static int Sys_Read(struct Interrupt_State *state)
  */
 static int Sys_ReadEntry(struct Interrupt_State *state)
 {
-    TODO("ReadEntry system call");
+	int rc;
+	struct File** fileList = g_currentThread->userContext->fileList;
+
+	Enable_Interrupts();
+	//Print("%d, fileList[state->ebx] : %x\n", state->ebx, fileList[state->ebx]);
+	rc = Read_Entry(fileList[state->ebx], (struct VFS_File_Stat *)(USER_BASE_ADRR + state->ecx)); // weak
+	Disable_Interrupts();
+	return rc;
+
+    //TODO("ReadEntry system call");
 }
 
 /*
@@ -471,7 +507,14 @@ static int Sys_Write(struct Interrupt_State *state)
  */
 static int Sys_Stat(struct Interrupt_State *state)
 {
-    TODO("Stat system call");
+	char path[VFS_MAX_PATH_LEN];
+	Copy_From_User(path, state->ebx, state->ecx);
+	
+    Enable_Interrupts();
+	Stat(path, (struct VFS_File_Stat *)(USER_BASE_ADRR + state->edx)); // weak
+	Disable_Interrupts();
+	return 0;
+    //TODO("Stat system call");
 }
 
 /*

@@ -286,6 +286,8 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 	for(i=0; i < USER_MAX_FILES; i++)
 		(*pUserContext)->fileList[i] = NULL;
 
+	/* copy pwd from parent process */
+	strcpy((*pUserContext)->pwd, g_currentThread->userContext->pwd); /* weak */
 
 	// setup LDT
 	// alloc LDT seg desc in GDT

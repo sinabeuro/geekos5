@@ -108,7 +108,7 @@ USER_C_SRCS := \
 	rec.c \
 	ls.c touch.c tstwrite.c type.c mkdir.c sync.c cp.c rm.c\
 	format.c mount.c cat.c p5test.c \
-	shell.c b.c c.c
+	shell.c b.c c.c stat.c opendir.c
 # User executables
 USER_PROGS := $(USER_C_SRCS:%.c=user/%.exe)
 

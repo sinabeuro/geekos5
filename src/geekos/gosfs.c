@@ -53,6 +53,23 @@ IMPLEMENT_LIST(GOSFS_File_List, GOSFS_File);
 /*
  * Get metadata for given file.
  */
+static struct GOSFS_Dir_Entry* Get_Entry_By_Ptr(GOSFS_Instance *instance, Dir_Entry_Ptr* dirEntryPtr)
+{
+	struct FS_Buffer *pBuf;
+
+	if(dirEntryPtr->base == 0){ /* Check whether root directory */
+		return &instance->rootDirEntry;
+	}
+
+	if(Get_FS_Buffer(instance->fscache, dirEntryPtr->base, &pBuf) != 0)
+	{		
+		Print("Get_FS_Buffer Error.\n");
+		return NULL;
+	}
+
+	Release_FS_Buffer(instance->fscache, pBuf);
+	return &((struct GOSFS_Dir_Entry*)pBuf->data)[dirEntryPtr->offset];
+}
 static int GOSFS_FStat(struct File *file, struct VFS_File_Stat *stat)
 {
     TODO("GeekOS filesystem FStat operation");
@@ -119,7 +136,7 @@ static int GOSFS_FStat_Directory(struct File *dir, struct VFS_File_Stat *stat)
  */
 static int GOSFS_Close_Directory(struct File *dir)
 {
-    TODO("GeekOS filesystem Close directory operation");
+    //TODO("GeekOS filesystem Close directory operation");
 }
 
 /*
@@ -127,7 +144,59 @@ static int GOSFS_Close_Directory(struct File *dir)
  */
 static int GOSFS_Read_Entry(struct File *dir, struct VFS_Dir_Entry *entry)
 {
-    TODO("GeekOS filesystem Read_Entry operation");
+	Dir_Entry_Ptr dentryPtr = ((struct GOSFS_File*)dir->fsData)->dirEntryPtr;
+    GOSFS_Instance *instance = (GOSFS_Instance*) dir->mountPoint->fsData;
+    struct FS_Buffer_Cache* fscache = instance->fscache;
+    struct FS_Buffer *pBuf;
+    struct GOSFS_Dir_Entry *dentry;
+   	struct VFS_File_Stat* stats;
+    int blockNum;
+	int rc = 0;
+	int i;
+
+	dentry = Get_Entry_By_Ptr(instance, &dentryPtr);
+	blockNum = dentry->blockList[0];
+	//Release_FS_Buffer(fscache, pBuf);
+	
+	if(Get_FS_Buffer(fscache, blockNum, &pBuf) != 0)
+	{    	
+		Print("Get_FS_Buffer Error.\n");
+		rc = EUNSPECIFIED;
+		goto fail;
+	}
+	while(dir->filePos < dir->endPos){
+		i = dir->filePos/sizeof(struct GOSFS_Dir_Entry);
+		dentry = &((struct GOSFS_Dir_Entry *)pBuf->data)[i];
+		dir->filePos += sizeof(struct GOSFS_Dir_Entry);
+		if(dentry->flags != 0){
+			break;
+		}
+	}
+	
+	if (dir->filePos >= dir->endPos){
+		rc = VFS_NO_MORE_DIR_ENTRIES;
+		goto fail; /* Reached the end of the directory. */
+	}
+	
+    /*
+     * Note: we don't need to bounds check here, because
+     * generic struct VFS_Dir_Entry objects have much more space for filenames
+     * than GOSFS directoryEntry objects.
+     */
+    strncpy(entry->name, dentry->filename, sizeof(dentry->filename));
+    entry->name[sizeof(dentry->filename)] = '\0';
+
+	stats = &entry->stats;
+	stats->isDirectory = (dentry->flags & GOSFS_DIRENTRY_ISDIRECTORY)? 1 : 0;
+	stats->size = dentry->size;
+	memcpy(stats->acls, dentry->acl, VFS_MAX_ACL_ENTRIES);
+	stats->isSetuid = 0; /* weak */
+	
+	fail:
+	Release_FS_Buffer(fscache, pBuf);
+	return rc;
+	
+	TODO("GeekOS filesystem Read_Entry operation");
 }
 
 /*static*/ struct File_Ops s_gosfsDirOps = {
@@ -161,9 +230,10 @@ static int GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 
     /* Special case: root directory. */
     if (strcmp(path, "/") == 0){
-		return &instance->rootDirEntry;
+    	//Print("ROOT\n");
+		return 0;
 	}
-
+	
 	while(strcmp(suffix, "/") != 0){ // weak
 		Unpack_Path(path, prefix, &suffix);
 		Print("%s, %s\n", prefix, suffix);
@@ -366,7 +436,7 @@ static int GOSFS_Open(struct Mount_Point *mountPoint, const char *path, int mode
     }
 
 	/* Create the file object. */
-	file = Allocate_File(&s_gosfsFileOps, 0, entry->size, gosfsFile, mode, mountPoint);
+	file = Allocate_File(&s_gosfsFileOps, 0, entry->size, gosfsFile, O_READ, mountPoint);
 	if (file == 0) {
 		rc = ENOMEM;
 		goto fail;
@@ -424,7 +494,7 @@ static int GOSFS_Create_Directory(struct Mount_Point *mountPoint, const char *pa
 			Debug("EACCESS\n");
 			Debug("filename : %s\n", pathInfo.suffix);
 			strcpy(entry->filename, pathInfo.suffix);
-			entry->size = 0; /* not reasonable.. */
+			entry->size = GOSFS_FS_BLOCK_SIZE; /* not reasonable.. */
 			entry->flags = GOSFS_DIRENTRY_ISDIRECTORY;
 
 			Super_Block* superBlock = (Super_Block*)instance->fsinfo->data;
@@ -480,6 +550,61 @@ static int GOSFS_Create_Directory(struct Mount_Point *mountPoint, const char *pa
  */
 static int GOSFS_Open_Directory(struct Mount_Point *mountPoint, const char *path, struct File **pDir)
 {
+    int rc = 0;
+    int retval = 0;
+	struct GOSFS_Dir_Entry* entry = 0;
+	GOSFS_Instance *instance = (GOSFS_Instance*) mountPoint->fsData;
+	struct GOSFS_File *gosfsFile = 0;
+	struct File *file = 0;
+	struct FS_Buffer_Cache* fscache = instance->fscache;
+	struct FS_Buffer *pBuf;
+	Path_Info pathInfo;
+	strcpy(&pathInfo, path);
+	pathInfo.dirEntryPtr.base = GOSFS_SUPER_BLOCK;
+
+    /* Look up the directory entry */
+    if ((retval = GOSFS_Lookup(instance, &pathInfo)) < 0){ 
+		Print("ENOTFOUND\n");
+		rc = ENOTFOUND;
+		goto done;
+	}
+	else{
+		Print("FOUND\n");
+		entry = Get_Entry_By_Ptr(instance, &pathInfo.dirEntryPtr);
+	    int flags = entry->flags;
+
+	    Print("blockList[0] : %d\n", entry->blockList[0]);
+
+	    if(flags != GOSFS_DIRENTRY_ISDIRECTORY){
+	    	rc = ENOTDIR;
+	    	goto fail;
+	    }	
+	}
+
+	/* Get GOSFS_File object */
+    gosfsFile = Get_GOSFS_File(instance, &(pathInfo.dirEntryPtr));
+    if (gosfsFile == 0){
+    	rc = EUNSPECIFIED;
+    	goto fail;
+    }
+
+	/* Create the file object. */
+	file = Allocate_File(&s_gosfsDirOps, 0, entry->size, gosfsFile, 0, mountPoint);
+	if (file == 0) {
+		rc = ENOMEM;
+		goto fail;
+	}
+
+	/* Success! */
+	*pDir = file;
+	Print("*pDir : %x\n", *pDir);
+
+	fail:
+	
+	done:
+	    //Release_FS_Buffer(fscache, pBuf);
+		return rc;
+
     TODO("GeekOS filesystem open directory operation");
 }
 
@@ -493,8 +618,6 @@ static int GOSFS_Delete(struct Mount_Point *mountPoint, const char *path)
 	int retval = 0;
 	struct GOSFS_Dir_Entry* entry = 0;
 	GOSFS_Instance *instance = (GOSFS_Instance*) mountPoint->fsData;
-	//struct GOSFS_File *gosfsFile = 0;
-	//struct File *file = 0;
 	struct FS_Buffer_Cache* fscache = instance->fscache;
 	Path_Info pathInfo;
 	struct FS_Buffer *pBuf, *pBuf_1;
@@ -525,7 +648,7 @@ static int GOSFS_Delete(struct Mount_Point *mountPoint, const char *path)
 		}
 		else if(entry->flags & GOSFS_DIRENTRY_ISDIRECTORY)
 		{
-			/* Check if empty.. */
+			/* Check whether empty.. */
 			for (i = 0; i < GOSFS_DIR_ENTRIES_PER_BLOCK; ++i) {
 				if ((&entry[i])->flags != 0){
 					rc = EUNSPECIFIED;
@@ -573,6 +696,38 @@ static int GOSFS_Delete(struct Mount_Point *mountPoint, const char *path)
  */
 static int GOSFS_Stat(struct Mount_Point *mountPoint, const char *path, struct VFS_File_Stat *stat)
 {
+	int i;
+	int rc = 0;
+	int retval = 0;
+	struct GOSFS_Dir_Entry* entry = 0;
+	GOSFS_Instance *instance = (GOSFS_Instance*) mountPoint->fsData;
+	struct FS_Buffer_Cache* fscache = instance->fscache;
+	Path_Info pathInfo;
+	struct FS_Buffer *pBuf;
+	strcpy(&pathInfo, path);
+	pathInfo.dirEntryPtr.base = GOSFS_SUPER_BLOCK;
+
+    /* Look up the directory entry */
+    if ((retval = GOSFS_Lookup(instance, &pathInfo)) < 0){ 
+		Print("ENOTFOUND\n");
+		rc = ENOTFOUND;
+		goto done;
+	}
+	else{
+		Print("FOUND\n");
+	    
+	    entry = Get_Entry_By_Ptr(instance, &pathInfo.dirEntryPtr);
+	    
+	    stat->isDirectory = (entry->flags & GOSFS_DIRENTRY_ISDIRECTORY)? 1 : 0;
+	    stat->size = entry->size;
+	    memcpy(stat->acls, entry->acl, VFS_MAX_ACL_ENTRIES);
+	    stat->isSetuid = 0; /* weak */	    	
+	    
+	}
+	
+	done:
+		return rc;
+
     TODO("GeekOS filesystem stat operation");
 }
 

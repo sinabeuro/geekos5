@@ -57,7 +57,7 @@ struct Kernel_Thread {
     DEFINE_LINK(All_Thread_List, Kernel_Thread);
 
     /* Array of MAX_TLOCAL_KEYS pointers to thread-local data. */
-#define MAX_TLOCAL_KEYS 128
+	#define MAX_TLOCAL_KEYS 128
     const void* tlocalData[MAX_TLOCAL_KEYS];
 
     /*

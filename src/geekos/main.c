@@ -45,6 +45,8 @@
 #endif
 
 #define INIT_PROGRAM "/" ROOT_PREFIX "/shell.exe"
+#define INIT_PWD "/" ROOT_PREFIX "/"
+
 
 int sh_pid;
 
@@ -90,9 +92,11 @@ void Main(struct Boot_Info* bootInfo)
 static void Mount_Root_Filesystem(void)
 {
     if (Mount(ROOT_DEVICE, ROOT_PREFIX, "pfat") != 0)
-	Print("Failed to mount /" ROOT_PREFIX " filesystem\n");
-    else
-	Print("Mounted /" ROOT_PREFIX " filesystem!\n");
+		Print("Failed to mount /" ROOT_PREFIX " filesystem\n");
+    else{
+		Print("Mounted /" ROOT_PREFIX " filesystem!\n");
+		strcpy(g_currentThread->userContext->pwd, INIT_PWD);
+	}
 
     Init_Paging();
 }

@@ -76,6 +76,9 @@ struct User_Context {
     int *semaphores;
 #endif
 	struct File* fileList[USER_MAX_FILES]; 
+	
+    /* Current directory */
+    char pwd[VFS_MAX_PATH_LEN];
 
 };
 

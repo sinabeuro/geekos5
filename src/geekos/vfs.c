@@ -15,6 +15,7 @@
 #include <geekos/malloc.h>
 #include <geekos/synch.h>
 #include <geekos/vfs.h>
+#include <geekos/user.h> /* weak */
 
 /*
  * Notes:
@@ -183,6 +184,15 @@ static int Do_Open(
     struct Mount_Point *mountPoint;
     int rc;
 
+    /* Check whether relative path */
+    if (*path != '/'){
+    	char* temp;
+    	temp = strdup(path);
+    	strcpy(path, g_currentThread->userContext->pwd); /* weak */
+    	strcat(path, temp);
+    	Free(temp);
+    }
+
     if (!Unpack_Path(path, prefix, &suffix))
 	return ENOTFOUND;
 
@@ -198,6 +208,7 @@ static int Do_Open(
 		(*pFile)->mode = mode;
 		(*pFile)->mountPoint = mountPoint;
     }
+
     return rc;
 }
 
@@ -419,6 +430,17 @@ int Stat(const char *path, struct VFS_File_Stat *stat)
     const char *suffix;
     struct Mount_Point *mountPoint;
 
+    /* Check whether relative path */
+    if (*path != '/'){
+    	Print("%s\n", g_currentThread->userContext->pwd);
+    	char* temp;
+    	temp = strdup(path);
+    	strcpy(path, g_currentThread->userContext->pwd); /* weak */
+    	strcat(path, temp);
+    	Free(temp);
+    	Print("%s\n", path);
+    }
+
     if (!Unpack_Path(path, prefix, &suffix))
 	return ENOTFOUND;
 
@@ -477,12 +499,12 @@ struct File *Allocate_File(struct File_Ops *ops, int filePos, int endPos, void *
 
     file = (struct File *) Malloc(sizeof(struct File));
     if (file != 0) {
-	file->ops = ops;
-	file->filePos = filePos;
-	file->endPos = endPos;
-	file->fsData = fsData;
-	file->mode = mode;
-	file->mountPoint = mountPoint;
+		file->ops = ops;
+		file->filePos = filePos;
+		file->endPos = endPos;
+		file->fsData = fsData;
+		file->mode = mode;
+		file->mountPoint = mountPoint;
     }
     return file;
 }
@@ -570,10 +592,10 @@ int Read_Fully(const char *path, void **pBuffer, ulong_t *pLen)
     int numBytesRead;
 
     if ((rc = Stat(path, &stat)) < 0 || (rc = Open(path, O_READ, &file)) < 0)
-	goto fail;
+		goto fail;
     if (stat.size < 0) {
-	rc = ENOTFOUND;
-	goto fail;
+		rc = ENOTFOUND;
+		goto fail;
     }
 
     buf = (char*) Malloc(stat.size);
@@ -681,9 +703,9 @@ int Open_Directory(const char *path, struct File **pDir)
 int Read_Entry(struct File *file, struct VFS_Dir_Entry *entry)
 {
     if (file->ops->Read_Entry == 0)
-	return EUNSUPPORTED;
+		return EUNSUPPORTED;
     else
-	return file->ops->Read_Entry(file, entry);
+		return file->ops->Read_Entry(file, entry);
 }
 
 /*
