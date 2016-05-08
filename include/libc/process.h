@@ -17,6 +17,8 @@ int Spawn_Program(const char* program, const char* command);
 int Spawn_With_Path(const char *program, const char *command, const char *path);
 int Wait(int pid);
 int Get_PID(void);
+int getcwd(char* buf, int size);
+
 
 #endif  /* PROCESS_H */
 

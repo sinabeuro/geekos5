@@ -23,7 +23,9 @@ DEF_SYSCALL(Spawn_Program,SYS_SPAWN,int,
     const char *arg0 = program; size_t arg1 = strlen(program); const char *arg2 = command; size_t arg3 = strlen(command);,
     SYSCALL_REGS_4)
 DEF_SYSCALL(Wait,SYS_WAIT,int,(int pid),int arg0 = pid;,SYSCALL_REGS_1)
-DEF_SYSCALL(Get_PID,SYS_GETPID,int,(void),,SYSCALL_REGS_0)
+DEF_SYSCALL(Get_PID,SYS_GETPID,int,(void),,SYSCALL_REGS_0)	
+DEF_SYSCALL(getcwd,SYS_GETCWD,int,(char* buf, int size), char *arg0 = buf; int arg1 = size;, SYSCALL_REGS_2)
+
 
 #define CMDLEN 79
 
@@ -55,38 +57,38 @@ int Spawn_With_Path(const char *program, const char *command,
 	);
 
     if (pid == ENOTFOUND && strchr(program, '/') == 0) {
-	/* Search for program on path. */
-	for (;;) {
-	    char *p;
+		/* Search for program on path. */
+		for (;;) {
+		    char *p;
 
-	    while (*path == ':')
-		++path;
+		    while (*path == ':')
+				++path;
 
-	    if (strcmp(path, "") == 0)
-		break;
+		    if (strcmp(path, "") == 0)
+				break;
 
-	    p = strchr(path, ':');
-	    if (p != 0) {
-		memcpy(exeName, path, p - path);
-		exeName[p - path] = '\0';
-		path = p + 1;
-	    } else {
-		strcpy(exeName, path);
-		path = "";
-	    }
+		    p = strchr(path, ':');
+		    if (p != 0) {
+				memcpy(exeName, path, p - path);
+				exeName[p - path] = '\0';
+				path = p + 1;
+		    } else {
+				strcpy(exeName, path);
+				path = "";
+		    }
 
-	    strcat(exeName, "/");
-	    strcat(exeName, program);
+		    strcat(exeName, "/");
+		    strcat(exeName, program);
 
-	    if (!Ends_With(exeName, ".exe"))
-		strcat(exeName, ".exe");
+		    if (!Ends_With(exeName, ".exe"))
+			strcat(exeName, ".exe");
 
-	    /*Print("exeName=%s\n", exeName);*/
-	    pid = Spawn_Program(exeName, command
-		);
-	    if (pid != ENOTFOUND)
-		break;
-	}
+		    /*Print("exeName=%s\n", exeName);*/
+		    pid = Spawn_Program(exeName, command
+			);
+		    if (pid != ENOTFOUND)
+			break;
+		}
     }
 
     return pid;

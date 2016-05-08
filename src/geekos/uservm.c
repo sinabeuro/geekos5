@@ -38,6 +38,12 @@ extern int debugFaults;
  * ---------------------------------------------------------------------- */
 extern void Load_LDTR(ushort_t LDTselector);
 
+char* Get_Cwd(void)
+{
+	/* weak : do consider to atomic? */
+	return g_currentThread->userContext->pwd;
+}
+
 ulong_t dtob(ulong_t decimal){
 
 	if(decimal <= 1)
@@ -287,7 +293,7 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 		(*pUserContext)->fileList[i] = NULL;
 
 	/* copy pwd from parent process */
-	strcpy((*pUserContext)->pwd, g_currentThread->userContext->pwd); /* weak */
+	strcpy((*pUserContext)->pwd, Get_Cwd()); /* weak */
 
 	// setup LDT
 	// alloc LDT seg desc in GDT
@@ -362,6 +368,18 @@ bool Copy_From_User(void* destInKernel, ulong_t srcInUser, ulong_t numBytes)
     return true;    
     //TODO("Copy user data to kernel buffer");
 }
+
+bool Copy_String_From_User(void* destInKernel, ulong_t srcInUser)
+{
+
+  	struct User_Context* userContext = g_currentThread->userContext;
+  	
+	KASSERT(!Interrupts_Enabled());
+    strcpy(destInKernel, (void*)(USER_BASE_ADRR + srcInUser)); // because kernel mode
+
+    return true;
+}
+
 
 /*
  * Copy data from kernel buffer into user buffer.

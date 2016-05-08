@@ -67,6 +67,8 @@ enum {
     SYS_CREATEDIR,	 /* Create directory system call  */
     SYS_SYNC,		 /* Sync filesystems system call  */
     SYS_FORMAT,		 /* Format filesystem system call  */
+    SYS_GETCWD,
+    SYS_CHDIR,
 };
 
 /*

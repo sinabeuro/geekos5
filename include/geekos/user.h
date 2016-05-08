@@ -15,6 +15,8 @@
 #include <geekos/segment.h>
 #include <geekos/elf.h>
 #include <geekos/paging.h>
+#include <geekos/fileio.h>
+
 
 struct File;
 

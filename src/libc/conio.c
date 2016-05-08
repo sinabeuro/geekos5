@@ -78,7 +78,7 @@ void Read_Line(char* buf, size_t bufSize)
 					   Get_Cursor(&startrow, &tempcol);
 					   if(tempcol > 2){
 						  	Put_Cursor(startrow, tempcol-1);
-						  	}
+					   }
 					   break;
 				   case 0x4d: /* Right */
 					   Get_Cursor(&startrow, &tempcol);
@@ -168,7 +168,7 @@ void Read_Line(char* buf, size_t bufSize)
 		//if (s_echo)
 		//   Put_Char(k);
 
-		// need to tab..
+		// need to consider tab..
 		if (k == '\n'){
 		    done = true;
 			Put_Cursor(startrow, startcol+n);

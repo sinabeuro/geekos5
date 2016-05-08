@@ -575,6 +575,7 @@ static int Sys_Sync(struct Interrupt_State *state)
 {
     TODO("Sync system call");
 }
+
 /*
  * Format a device
  * Params:
@@ -602,6 +603,22 @@ static int Sys_Format(struct Interrupt_State *state)
     //TODO("Format system call");
     return 0;
 }
+
+static Sys_GetCwd(struct Interrupt_State *state)
+{
+	char *pwd = Get_Cwd();
+	Print("%s\n", pwd);
+	Copy_To_User(state->ebx, pwd, state->ecx);
+	return 0;
+}
+
+static Sys_ChangeDir(struct Interrupt_State *state)
+{
+	char *pwd = Get_Cwd();
+	Copy_String_From_User(pwd, state->ebx);
+	return 0;
+}
+
 
 
 /*
@@ -640,6 +657,9 @@ const Syscall g_syscallTable[] = {
     Sys_CreateDir,
     Sys_Sync,
     Sys_Format,
+    /* Pwd */
+    Sys_GetCwd,
+    Sys_ChangeDir,
 };
 
 /*

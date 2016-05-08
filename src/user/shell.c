@@ -53,20 +53,22 @@ int main(int argc, char **argv)
     char commandBuf[BUFSIZE+1];
     struct Process procList[MAXPROC];
     char path[BUFSIZE+1] = DEFAULT_PATH;
+    char pwd[BUFSIZE+1];
     char *command;
 
 	Init_History(&history);
- 	Add_History_Item(&history, "/c/format.exe ide1 gosfs");
-	Add_History_Item(&history, "/c/mount.exe ide1 /d gosfs");
-	Add_History_Item(&history, "/c/touch.exe /d/test");
-	Add_History_Item(&history, "/c/mkdir.exe /d/new");
-	Add_History_Item(&history, "/c/opendir.exe /d/new");
+ 	Add_History_Item(&history, "format ide1 gosfs");
+	Add_History_Item(&history, "mount ide1 /d gosfs");
+	Add_History_Item(&history, "touch /d/test");
+	Add_History_Item(&history, "mkdir /d/new");
+	Add_History_Item(&history, "ls /d/new");
 
     /* Set attribute to gray on black. */
 	Print("\x1B[37m");
     while (true) {
 		/* Print shell prompt (bright cyan on black background) */
-		Print("\x1B[1;36m$\x1B[37m ");
+		getcwd(pwd, BUFSIZE);
+		Print("%s\x1B[1;36m$\x1B[37m ", pwd);
 
 		/* Read a line of input */
 		Read_Line(commandBuf, sizeof(commandBuf));		

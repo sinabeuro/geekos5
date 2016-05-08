@@ -106,32 +106,28 @@ int Spawn(const char *program, const char *command, struct Kernel_Thread **pThre
 	ulong_t exeFileLength;
 	struct Exe_Format exeFormat;
 	struct User_Context* pUserContext;
+	int rc;
 
-	if (userdebug)
-	  {
+	if (userdebug){
 		Print("Reading %s...\n", program);
-	  }
+	}
 	
-	if (Read_Fully(program, (void**) &exeFileData, &exeFileLength) != 0)
-	  {
-		Print("Read_Fully failed to read %s from disk\n", program);
-		return -1;
-	  }
+	if ((rc = Read_Fully(program, (void**) &exeFileData, &exeFileLength)) != 0){
+		if(userdebug) Print("Read_Fully failed to read %s from disk\n", program);
+		return rc;
+	}
 
-	if (userdebug)
-	  {  
+	if (userdebug){  
 		Print("Read_Fully OK\n");
-	  }
+	}
 	
-	if (Parse_ELF_Executable(exeFileData, exeFileLength, &exeFormat) != 0)
-	  {
-		Print("Parse_ELF_Executable failed\n");
-		return -1;
-	  }
+	if (Parse_ELF_Executable(exeFileData, exeFileLength, &exeFormat) != 0){
+		if(userdebug) Print("Parse_ELF_Executable failed\n");
+		return EUNSPECIFIED;
+	}
 
-	if (userdebug)
-    { 
-      Print("Parse_ELF_Executable OK\n");
+	if (userdebug){ 
+    	Print("Parse_ELF_Executable OK\n");
     }	 
 
 	Load_User_Program(exeFileData, exeFileLength, &exeFormat, command,

@@ -188,7 +188,7 @@ static int Do_Open(
     if (*path != '/'){
     	char* temp;
     	temp = strdup(path);
-    	strcpy(path, g_currentThread->userContext->pwd); /* weak */
+    	strcpy(path, Get_Cwd()); /* weak */
     	strcat(path, temp);
     	Free(temp);
     }
@@ -432,10 +432,9 @@ int Stat(const char *path, struct VFS_File_Stat *stat)
 
     /* Check whether relative path */
     if (*path != '/'){
-    	Print("%s\n", g_currentThread->userContext->pwd);
     	char* temp;
     	temp = strdup(path);
-    	strcpy(path, g_currentThread->userContext->pwd); /* weak */
+    	strcpy(path, Get_Cwd()); /* weak */
     	strcat(path, temp);
     	Free(temp);
     	Print("%s\n", path);
