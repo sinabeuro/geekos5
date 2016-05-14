@@ -40,6 +40,7 @@ char *Copy_Token(char *token, char *s);
 int Build_Pipeline(char *command, struct Process procList[]);
 void Spawn_Single_Command(struct Process procList[], int nproc, const char *path);
 int Process_Arrow_Key(Keycode* k, char* buf, char** ptr, size_t* n, void* arg);
+int Change_Directory(char *path);
 
 /* Maximum number of processes allowed in a pipeline. */
 #define MAXPROC 5
@@ -68,10 +69,10 @@ int main(int argc, char **argv)
     while (true) {
 		/* Print shell prompt (bright cyan on black background) */
 		getcwd(pwd, BUFSIZE);
-		Print("%s\x1B[1;36m$\x1B[37m ", pwd);
+		Print(":%s\x1B[1;36m$\x1B[37m ", pwd);
 
 		/* Read a line of input */
-		Read_Line(commandBuf, sizeof(commandBuf));		
+		Read_Line(commandBuf, sizeof(commandBuf), strlen(pwd)+3);		
 		command = Strip_Leading_Whitespace(commandBuf);
 		Trim_Newline(command);
 
@@ -101,7 +102,12 @@ int main(int argc, char **argv)
 		else if (strncmp(command, "history", 7) == 0) {
 		    Print_History(&history);
 		    continue;
-		}else if (strcmp(command, "") == 0) {
+		}else if (strncmp(command, "cd", 2) == 0) {
+		    /* Change directory */
+ 		    Change_Directory(command + 2); /* weak : need to consider space */
+		    continue;
+		}
+		else if (strcmp(command, "") == 0) {
 		    /* Blank line. */
 		    continue;
 		}
@@ -120,6 +126,13 @@ int main(int argc, char **argv)
 
     Print_String("DONE!\n");
     return 0;
+}
+
+int Change_Directory(char *path)
+{
+	while(*path == ' ') path++; /* weak : nedd to consider all ws */
+	if(*path == '\0') return 0;
+	return chdir(path);
 }
 
 int Process_Arrow_Key(Keycode* k, char* buf, char** ptr, size_t* n, void* arg)

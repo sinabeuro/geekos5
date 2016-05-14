@@ -52,7 +52,7 @@ void Echo(bool enable)
     s_echo = enable;
 }
 
-void Read_Line(char* buf, size_t bufSize)
+void Read_Line(char* buf, size_t bufSize, int boundary)
 {
     char *ptr = buf;
     size_t n = 0;
@@ -76,7 +76,7 @@ void Read_Line(char* buf, size_t bufSize)
 			   switch(k){
 				   case 0x4b: /* Left */
 					   Get_Cursor(&startrow, &tempcol);
-					   if(tempcol > 2){
+					   if(tempcol > boundary){
 						  	Put_Cursor(startrow, tempcol-1);
 					   }
 					   break;
@@ -91,7 +91,7 @@ void Read_Line(char* buf, size_t bufSize)
 				   case 0x50:
 					   if(!string) string = Get_History_Item(&history, DOWN);
 					   strcpy(buf, string);
-					   Clear_Line();
+					   Clear_Line(boundary);
 					   Print("%s", buf);
 					   ptr = buf + strlen(string);
 					   n = strlen(string);
@@ -103,7 +103,7 @@ void Read_Line(char* buf, size_t bufSize)
 					       buf[i] = buf[i+1];
 					   --ptr;
 					   --n;
-					   Clear_Line();
+					   Clear_Line(boundary);
 					   for(i = 0; i < n; i++)
 						   Put_Char(buf[i]);
 					   Put_Cursor(startrow, newcol);
@@ -155,7 +155,7 @@ void Read_Line(char* buf, size_t bufSize)
 					--n;
 					
 					//Put_Cursor(startrow, startcol);
-					Clear_Line();
+					Clear_Line(boundary);
 					for(i = 0; i < n; i++)
 				    	Put_Char(buf[i]);
 				    Put_Cursor(startrow, newcol);
@@ -189,7 +189,7 @@ void Read_Line(char* buf, size_t bufSize)
 
 		    ++ptr;
 		    ++n; 
-		   	Clear_Line();
+		   	Clear_Line(boundary);
 			for(i = 0; i < n; i++)
 				Put_Char(buf[i]);
 		   	Put_Cursor(startrow, curcol+1);
@@ -235,15 +235,15 @@ void Print(const char *fmt, ...)
     va_end(args);
 }
 
-void Clear_Line(void)
+void Clear_Line(int boundary)
 {
 	int i;
     int startrow, startcol;
 	Get_Cursor(&startrow, &startcol);
 	//Print("clear line :%d, %d\n", startrow, startcol);
-	Put_Cursor(startrow, 2);
-	for(i = 2; i < 50; i++)
+	Put_Cursor(startrow, boundary);
+	for(i = boundary; i < 50; i++) /* weak */
 		Put_Char(' '); // weak
-	Put_Cursor(startrow, 2);
+	Put_Cursor(startrow, boundary);
 }
 

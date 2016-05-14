@@ -18,6 +18,7 @@ int Spawn_With_Path(const char *program, const char *command, const char *path);
 int Wait(int pid);
 int Get_PID(void);
 int getcwd(char* buf, int size);
+int chdir(const char* dirname);
 
 
 #endif  /* PROCESS_H */

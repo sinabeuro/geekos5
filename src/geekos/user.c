@@ -129,7 +129,6 @@ int Spawn(const char *program, const char *command, struct Kernel_Thread **pThre
 	if (userdebug){ 
     	Print("Parse_ELF_Executable OK\n");
     }	 
-
 	Load_User_Program(exeFileData, exeFileLength, &exeFormat, command,
     (struct User_Context **)&pUserContext);
 

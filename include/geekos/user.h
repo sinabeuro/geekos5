@@ -16,7 +16,7 @@
 #include <geekos/elf.h>
 #include <geekos/paging.h>
 #include <geekos/fileio.h>
-
+#include <geekos/vfs.h>
 
 struct File;
 
@@ -80,7 +80,8 @@ struct User_Context {
 	struct File* fileList[USER_MAX_FILES]; 
 	
     /* Current directory */
-    char pwd[VFS_MAX_PATH_LEN];
+    struct path pwd;
+    //struct VFS_Dir_Entry;
 
 };
 

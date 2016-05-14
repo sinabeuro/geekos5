@@ -288,7 +288,7 @@ static struct File_Ops s_pfatDirOps = {
 /*
  * Look up a directory entry in a PFAT filesystem.
  */
-static directoryEntry *PFAT_Lookup(struct PFAT_Instance *instance, const char *path)
+static directoryEntry *Do_PFAT_Lookup(struct PFAT_Instance *instance, const char *path)
 {
     directoryEntry *rootDir = instance->rootDir;
     bootSector *fsinfo = &instance->fsinfo;
@@ -309,12 +309,12 @@ static directoryEntry *PFAT_Lookup(struct PFAT_Instance *instance, const char *p
      * is supported.
      */
     for (i = 0; i < fsinfo->rootDirectoryCount; ++i) {
-    	directoryEntry *entry = &rootDir[i];
-	if (strcmp(entry->fileName, path) == 0) {
-	    /* Found it! */
-	    Debug("Found matching dir entry for %s\n", path);
-	    return entry;
-	}
+	    	directoryEntry *entry = &rootDir[i];
+		if (strcmp(entry->fileName, path) == 0) {
+		    /* Found it! */
+		    Debug("Found matching dir entry for %s\n", path);
+		    return entry;
+		}
     }
 
     /* Not found. */
@@ -406,7 +406,7 @@ static int PFAT_Open(struct Mount_Point *mountPoint, const char *path, int mode,
 	return EACCESS;
 
     /* Look up the directory entry */
-    entry = PFAT_Lookup(instance, path);
+    entry = Do_PFAT_Lookup(instance, path);
     if (entry == 0)
 	return ENOTFOUND;
 
@@ -475,9 +475,9 @@ static int PFAT_Stat(struct Mount_Point *mountPoint, const char *path, struct VF
 
     Debug("PFAT_Stat(%s)\n", path);
 
-    entry = PFAT_Lookup(instance, path);
+    entry = Do_PFAT_Lookup(instance, path);
     if (entry == 0)
-	return ENOTFOUND;
+		return ENOTFOUND;
 
     Copy_Stat(stat, entry);
 
@@ -493,6 +493,23 @@ static int PFAT_Sync(struct Mount_Point *mountPoint)
     return 0;
 }
 
+static int PFAT_Get_Path(struct Mount_Point *mountPoint, void *dentry, char *path)
+{
+	Print("PFAT_Get_Path\n");
+	strcpy(path, ((directoryEntry *)dentry)->fileName);
+	Print("pwd : %s\n", path);
+	return 0;
+}
+
+static PFAT_Lookup(struct Mount_Point *mountPoint, char *path, void** dentry)
+{
+	struct PFAT_Instance *instance = (struct PFAT_Instance*) mountPoint->fsData;
+	directoryEntry *rootDirEntry = (directoryEntry*)Malloc(sizeof(directoryEntry));
+	memcpy(rootDirEntry, &instance->rootDirEntry, sizeof(directoryEntry));
+	*dentry = (void*)rootDirEntry;
+	return 0;
+}
+
 /*
  * Mount_Point_Ops for PFAT filesystem.
  */
@@ -502,7 +519,9 @@ struct Mount_Point_Ops s_pfatMountPointOps = {
     PFAT_Open_Directory,
     PFAT_Stat,
     PFAT_Sync,
-    0                          /* Delete */
+    0,                         /* Delete */
+    PFAT_Get_Path,
+    PFAT_Lookup,
 };
 
 /*
@@ -520,7 +539,7 @@ static void PFAT_Register_Paging_File(struct Mount_Point *mountPoint, struct PFA
     if (Get_Paging_Device() != 0)
 	return;  /* A paging device is already registered */
 
-    pagefileEntry = PFAT_Lookup(instance, PAGEFILE_FILENAME);
+    pagefileEntry = Do_PFAT_Lookup(instance, PAGEFILE_FILENAME);
     if (pagefileEntry == 0)
 	return;  /* No paging file in this filesystem */
 

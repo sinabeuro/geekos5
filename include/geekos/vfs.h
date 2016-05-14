@@ -57,6 +57,8 @@ struct Mount_Point_Ops {
     int (*Stat)(struct Mount_Point *mountPoint, const char *path, struct VFS_File_Stat *stat);
     int (*Sync)(struct Mount_Point *mountPoint);
     int (*Delete)(struct Mount_Point *mountPoint, const char *path);
+    int (*Get_Path)(struct Mount_Point *mountPoint, const char *dentry, char* path);
+    int (*Lookup)(struct Mount_Point *mountPoint, char *path, void* dentry);
     /* TODO: ACLs */
 };
 
@@ -102,9 +104,17 @@ struct Paging_Device {
     ulong_t numSectors;		 /* Number of sectors in paging file. */
 };
 
+/* Borrow from Linux */
+struct path {
+	char *pathPrefix;
+	void *dentry;
+};
+
 /*
  * VFS functions.
  */
+
+int Convert_To_Abs_Path(char *path);
 bool Unpack_Path(const char *path, char *prefix, const char **pSuffix);
 
 /* Filesystem operations. */
@@ -136,6 +146,7 @@ int Read_Entry(struct File *file, struct VFS_Dir_Entry *entry);
  */
 void Register_Paging_Device(struct Paging_Device *pagingDevice);
 struct Paging_Device *Get_Paging_Device(void);
+int Get_Path(struct path *path, char* spath);
 
 #endif /* GEEKOS */
 

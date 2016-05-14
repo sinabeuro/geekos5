@@ -606,17 +606,36 @@ static int Sys_Format(struct Interrupt_State *state)
 
 static Sys_GetCwd(struct Interrupt_State *state)
 {
-	char *pwd = Get_Cwd();
-	Print("%s\n", pwd);
-	Copy_To_User(state->ebx, pwd, state->ecx);
+	//struct path *pwd = Get_Cwd();
+	//struct path *path = (struct path *)Malloc(sizeof(struct path));
+	char spath[VFS_MAX_PATH_LEN];
+	//path->dentry
+	Enable_Interrupts();
+	Print("Sys_GetCwd : %s\n", ((struct path*)Get_Cwd())->pathPrefix);	
+	Get_Path(Get_Cwd(), spath);
+	Disable_Interrupts();
+	Copy_To_User(state->ebx, spath, state->ecx);
 	return 0;
 }
 
 static Sys_ChangeDir(struct Interrupt_State *state)
 {
-	char *pwd = Get_Cwd();
-	Copy_String_From_User(pwd, state->ebx);
-	return 0;
+	char spath[VFS_MAX_PATH_LEN];
+	struct VFS_File_Stat vfsFileStat;
+	struct path *path;
+	int rc = 0; 
+	Copy_String_From_User(spath, state->ebx);
+
+	/* Check whether path is vaild */
+    Enable_Interrupts();
+    path = Get_Cwd();
+	Lookup(spath, path);
+ 
+	fail:
+	
+	Disable_Interrupts();
+
+	return rc;
 }
 
 

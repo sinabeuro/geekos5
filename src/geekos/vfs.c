@@ -61,6 +61,16 @@ static struct Filesystem_List s_filesystemList;
 /* Registered paging device. */
 static struct Paging_Device *s_pagingDevice;
 
+int Convert_To_Abs_Path(char *path)
+{
+	char* temp;
+	temp = strdup(path);
+	strcpy(path, Get_Cwd()); /* weak */
+	strcat(path, "/");
+	strcat(path, temp);
+	Free(temp);
+}
+
 /*
  * Unpack a path into prefix and suffix.
  * The prefix determines which mounted filesystem
@@ -185,13 +195,9 @@ static int Do_Open(
     int rc;
 
     /* Check whether relative path */
-    if (*path != '/'){
-    	char* temp;
-    	temp = strdup(path);
-    	strcpy(path, Get_Cwd()); /* weak */
-    	strcat(path, temp);
-    	Free(temp);
-    }
+    if (*path != '/')
+		Convert_To_Abs_Path(path);
+
 
     if (!Unpack_Path(path, prefix, &suffix))
 	return ENOTFOUND;
@@ -431,17 +437,11 @@ int Stat(const char *path, struct VFS_File_Stat *stat)
     struct Mount_Point *mountPoint;
 
     /* Check whether relative path */
-    if (*path != '/'){
-    	char* temp;
-    	temp = strdup(path);
-    	strcpy(path, Get_Cwd()); /* weak */
-    	strcat(path, temp);
-    	Free(temp);
-    	Print("%s\n", path);
-    }
+    if (*path != '/')
+		Convert_To_Abs_Path(path);
 
     if (!Unpack_Path(path, prefix, &suffix))
-	return ENOTFOUND;
+		return ENOTFOUND;
 
     /* Get mount point for path */
     Debug("Stat: lookup mount point for %s\n", prefix);
@@ -675,9 +675,9 @@ int Delete(const char *path)
 	return ENOTFOUND;
 
     if (mountPoint->ops->Delete == 0)
-	return EUNSUPPORTED;
+		return EUNSUPPORTED;
     else
-	return mountPoint->ops->Delete(mountPoint, suffix);
+		return mountPoint->ops->Delete(mountPoint, suffix);
 }
 
 /*
@@ -727,3 +727,42 @@ struct Paging_Device *Get_Paging_Device(void)
     return s_pagingDevice;
 }
 
+int Get_Path(struct path *path, char* spath)
+{
+	strcpy(spath, path->pathPrefix);
+	strcpy(spath+strlen(path->pathPrefix), "/");
+	//Print("Get_Path : %s\n", path->pathPrefix);
+	struct Mount_Point *mountPoint;
+	mountPoint = Lookup_Mount_Point(path->pathPrefix);
+	if (mountPoint == 0)
+		return ENOTFOUND;
+		
+    if (mountPoint->ops->Get_Path == 0)
+		return EUNSUPPORTED;
+    else
+		return mountPoint->ops->Get_Path(mountPoint, path->dentry, spath + strlen(path->pathPrefix)+1);
+}
+
+int Lookup(char *spath, struct path *path)
+{
+    char prefix[MAX_PREFIX_LEN + 1];
+    const char *suffix;
+    struct Mount_Point *mountPoint;
+
+    /* Split path into prefix and suffix */
+    if (!Unpack_Path(spath, prefix, &suffix))
+		return ENOTFOUND;
+
+    /* Get mount point for path */
+    mountPoint = Lookup_Mount_Point(prefix);
+    if (mountPoint == 0)
+		return ENOTFOUND;
+
+	strcpy(path->pathPrefix, prefix);
+	//Free(path->dentry);
+
+    if (mountPoint->ops->Lookup == 0)
+		return EUNSUPPORTED;
+    else
+		return mountPoint->ops->Lookup(mountPoint, suffix, &path->dentry);
+}

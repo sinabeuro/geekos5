@@ -70,6 +70,7 @@ static struct GOSFS_Dir_Entry* Get_Entry_By_Ptr(GOSFS_Instance *instance, Dir_En
 	Release_FS_Buffer(instance->fscache, pBuf);
 	return &((struct GOSFS_Dir_Entry*)pBuf->data)[dirEntryPtr->offset];
 }
+
 static int GOSFS_FStat(struct File *file, struct VFS_File_Stat *stat)
 {
     TODO("GeekOS filesystem FStat operation");
@@ -212,7 +213,7 @@ static int GOSFS_Read_Entry(struct File *dir, struct VFS_Dir_Entry *entry)
 /*
  * Look up a directory entry in a GOSFS filesystem.
  */
-static int GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
+static int Do_GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 {
     Super_Block *superBlock = (Super_Block *)instance->fsinfo->data;
 	struct FS_Buffer_Cache* fscache = instance->fscache;
@@ -372,7 +373,7 @@ static int GOSFS_Open(struct Mount_Point *mountPoint, const char *path, int mode
 	pathInfo.dirEntryPtr.base = GOSFS_SUPER_BLOCK;
 
     /* Look up the directory entry */
-    if ((retval = GOSFS_Lookup(instance, &pathInfo)) < 0){ 
+    if ((retval = Do_GOSFS_Lookup(instance, &pathInfo)) < 0){ 
     	if(retval == ENOTFOUND){ /* Wrong path, weak */
 			rc = ENOTFOUND;
 			goto fail;
@@ -471,10 +472,8 @@ static int GOSFS_Create_Directory(struct Mount_Point *mountPoint, const char *pa
 	strcpy(&pathInfo, path);
 	pathInfo.dirEntryPtr.base = GOSFS_SUPER_BLOCK;
 
-		
-
     /* Look up the directory entry */
-    if ((retval = GOSFS_Lookup(instance, &pathInfo)) < 0){ 
+    if ((retval = Do_GOSFS_Lookup(instance, &pathInfo)) < 0){ 
     	if(retval == ENOTFOUND){ /* Wrong path, weak */
 			Debug("ENOTFOUND\n");
 			rc = ENOTFOUND;
@@ -563,7 +562,7 @@ static int GOSFS_Open_Directory(struct Mount_Point *mountPoint, const char *path
 	pathInfo.dirEntryPtr.base = GOSFS_SUPER_BLOCK;
 
     /* Look up the directory entry */
-    if ((retval = GOSFS_Lookup(instance, &pathInfo)) < 0){ 
+    if ((retval = Do_GOSFS_Lookup(instance, &pathInfo)) < 0){ 
 		Print("ENOTFOUND\n");
 		rc = ENOTFOUND;
 		goto done;
@@ -625,7 +624,7 @@ static int GOSFS_Delete(struct Mount_Point *mountPoint, const char *path)
 	pathInfo.dirEntryPtr.base = GOSFS_SUPER_BLOCK;
 
     /* Look up the directory entry */
-    if ((retval = GOSFS_Lookup(instance, &pathInfo)) < 0){ 
+    if ((retval = Do_GOSFS_Lookup(instance, &pathInfo)) < 0){ 
 		Print("ENOTFOUND\n");
 		rc = ENOTFOUND;
 		goto done;
@@ -708,7 +707,7 @@ static int GOSFS_Stat(struct Mount_Point *mountPoint, const char *path, struct V
 	pathInfo.dirEntryPtr.base = GOSFS_SUPER_BLOCK;
 
     /* Look up the directory entry */
-    if ((retval = GOSFS_Lookup(instance, &pathInfo)) < 0){ 
+    if ((retval = Do_GOSFS_Lookup(instance, &pathInfo)) < 0){ 
 		Print("ENOTFOUND\n");
 		rc = ENOTFOUND;
 		goto done;
@@ -717,12 +716,10 @@ static int GOSFS_Stat(struct Mount_Point *mountPoint, const char *path, struct V
 		Print("FOUND\n");
 	    
 	    entry = Get_Entry_By_Ptr(instance, &pathInfo.dirEntryPtr);
-	    
 	    stat->isDirectory = (entry->flags & GOSFS_DIRENTRY_ISDIRECTORY)? 1 : 0;
 	    stat->size = entry->size;
 	    memcpy(stat->acls, entry->acl, VFS_MAX_ACL_ENTRIES);
-	    stat->isSetuid = 0; /* weak */	    	
-	    
+	    stat->isSetuid = 0; /* weak */
 	}
 	
 	done:
@@ -740,6 +737,91 @@ static int GOSFS_Sync(struct Mount_Point *mountPoint)
     TODO("GeekOS filesystem sync operation");
 }
 
+static GOSFS_Get_Path(struct Mount_Point *mountPoint, void *dentry, char *path)
+{
+	GOSFS_Instance *instance = (GOSFS_Instance*)mountPoint->fsData;
+	struct FS_Buffer_Cache* fscache = instance->fscache;
+	Dir_Entry_Ptr* dentryPtr = (Dir_Entry_Ptr*)dentry;
+	Dir_Entry_Ptr* temp = (Dir_Entry_Ptr*)Malloc(sizeof(Dir_Entry_Ptr));
+	struct GOSFS_Dir_Entry* gosfsDentry;
+	struct GOSFS_Dir_Entry* prevBlkEntry; /* weak : Naming is not reasonable*/
+	int i;
+	int curBlkNum, prevBlkNum;
+
+	Print("GOSFS_Get_Path %d, %d\n", dentryPtr->base, dentryPtr->offset);
+	Print("filename : %s\n", Get_Entry_By_Ptr(instance, dentryPtr)->filename);
+	if(strcmp(Get_Entry_By_Ptr(instance, dentryPtr)->filename, "..") == 0){
+		temp->base = dentryPtr->base;
+		temp->offset = 1; /* This means '..' */
+		prevBlkEntry = Get_Entry_By_Ptr(instance, temp); 
+		prevBlkNum = prevBlkEntry->blockList[0];
+	}
+	else{
+		strcpy(path, Get_Entry_By_Ptr(instance, dentryPtr)->filename);
+		prevBlkNum = dentryPtr->base;
+	}
+	while(true){
+		temp->base = curBlkNum = prevBlkNum;
+		temp->offset = 1; /* This means '..' */
+		prevBlkEntry = Get_Entry_By_Ptr(instance, temp); 
+		prevBlkNum = prevBlkEntry->blockList[0];
+
+		if(temp->base == prevBlkNum) /* Reach to root? */
+			break;
+			
+		temp->base = prevBlkNum;
+		temp->offset = 0; /* Previous block's first entry */
+		gosfsDentry = Get_Entry_By_Ptr(instance, temp);
+		
+		/* Find dentry at previous block*/
+		for (i = 0; i < GOSFS_DIR_ENTRIES_PER_BLOCK; ++i) {
+			if(gosfsDentry[i].blockList[0] == curBlkNum){
+				break;
+			}
+		}
+
+		/* There is no reference to next block */
+		if(i == GOSFS_DIR_ENTRIES_PER_BLOCK)
+			return EUNSPECIFIED;
+
+		/* Add to path */
+		Print("filename : %s\n", gosfsDentry[i].filename);
+		memmove(path + strlen(gosfsDentry[i].filename)+1, path, strlen(path)+1);
+		Print("after memmove : %s\n", path);
+		memcpy(path, gosfsDentry[i].filename, strlen(gosfsDentry[i].filename));
+		memcpy(path+strlen(gosfsDentry[i].filename), "/", 1);
+	}
+	Print("path : %s\n", path);
+	done:
+	//path = "/d/";
+	Free(temp);
+	return 0;	
+}
+
+static GOSFS_Lookup(struct Mount_Point *mountPoint, char *path, void** dentry)
+{
+	GOSFS_Instance *instance = (GOSFS_Instance*) mountPoint->fsData;
+	Path_Info *pathInfo = (Path_Info *)Malloc(sizeof(Path_Info));
+	strcpy(pathInfo, path);
+	pathInfo->dirEntryPtr.base = GOSFS_SUPER_BLOCK;
+	int rc = 0;
+    /* Look up the directory entry */
+    if (Do_GOSFS_Lookup(instance, pathInfo) < 0){ 
+		Print("ENOTFOUND\n");
+		rc = ENOTFOUND;
+		goto done;
+	}
+
+	Print("GOSFS_Lookup %d, %d\n", pathInfo->dirEntryPtr.base, pathInfo->dirEntryPtr.offset);
+
+	*dentry = (void*)&pathInfo->dirEntryPtr;
+	done:
+		
+	return rc;
+
+
+}
+
 /*static*/ struct Mount_Point_Ops s_gosfsMountPointOps = {
     &GOSFS_Open,
     &GOSFS_Create_Directory,
@@ -747,6 +829,8 @@ static int GOSFS_Sync(struct Mount_Point *mountPoint)
     &GOSFS_Stat,
     &GOSFS_Sync,
     &GOSFS_Delete,
+    &GOSFS_Get_Path,
+    &GOSFS_Lookup,
 };
 
 static int GOSFS_Format(struct Block_Device *blockDev)

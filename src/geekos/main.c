@@ -44,8 +44,8 @@
 #  define ROOT_PREFIX "c"
 #endif
 
-#define INIT_PROGRAM "/" ROOT_PREFIX "/shell.exe"
-#define INIT_PWD "/" ROOT_PREFIX "/"
+#define INIT_PWD "/" ROOT_PREFIX
+#define INIT_PROGRAM INIT_PWD "/shell.exe"
 
 
 int sh_pid;
@@ -95,7 +95,8 @@ static void Mount_Root_Filesystem(void)
 		Print("Failed to mount /" ROOT_PREFIX " filesystem\n");
     else{
 		Print("Mounted /" ROOT_PREFIX " filesystem!\n");
-		strcpy(Get_Cwd(), INIT_PWD);
+		((struct path*)Get_Cwd())->pathPrefix = ROOT_PREFIX;
+		Lookup(INIT_PWD, Get_Cwd());
 	}
 
     Init_Paging();

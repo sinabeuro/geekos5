@@ -38,10 +38,10 @@ extern int debugFaults;
  * ---------------------------------------------------------------------- */
 extern void Load_LDTR(ushort_t LDTselector);
 
-char* Get_Cwd(void)
+struct path* Get_Cwd(void)
 {
 	/* weak : do consider to atomic? */
-	return g_currentThread->userContext->pwd;
+	return &g_currentThread->userContext->pwd;
 }
 
 ulong_t dtob(ulong_t decimal){
@@ -293,7 +293,7 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 		(*pUserContext)->fileList[i] = NULL;
 
 	/* copy pwd from parent process */
-	strcpy((*pUserContext)->pwd, Get_Cwd()); /* weak */
+	memcpy(&(*pUserContext)->pwd, Get_Cwd(), sizeof(struct path)); /* weak */
 
 	// setup LDT
 	// alloc LDT seg desc in GDT
