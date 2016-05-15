@@ -495,9 +495,9 @@ static int PFAT_Sync(struct Mount_Point *mountPoint)
 
 static int PFAT_Get_Path(struct Mount_Point *mountPoint, void *dentry, char *path)
 {
-	Print("PFAT_Get_Path\n");
+	Debug("PFAT_Get_Path\n");
 	strcpy(path, ((directoryEntry *)dentry)->fileName);
-	Print("pwd : %s\n", path);
+	Debug("pwd : %s\n", path);
 	return 0;
 }
 

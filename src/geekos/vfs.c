@@ -65,10 +65,11 @@ int Convert_To_Abs_Path(char *path)
 {
 	char* temp;
 	temp = strdup(path);
-	strcpy(path, Get_Cwd()); /* weak */
+	Get_Path(Get_Cwd(), path); /* weak */
 	strcat(path, "/");
 	strcat(path, temp);
 	Free(temp);
+	Debug("Convert_To_Abs_Path : %s\n", path);
 }
 
 /*
@@ -197,7 +198,6 @@ static int Do_Open(
     /* Check whether relative path */
     if (*path != '/')
 		Convert_To_Abs_Path(path);
-
 
     if (!Unpack_Path(path, prefix, &suffix))
 	return ENOTFOUND;
@@ -518,9 +518,9 @@ struct File *Allocate_File(struct File_Ops *ops, int filePos, int endPos, void *
 int FStat(struct File *file, struct VFS_File_Stat *stat)
 {
     if (file->ops->FStat == 0)
-	return EUNSUPPORTED;
+		return EUNSUPPORTED;
     else
-	return file->ops->FStat(file, stat);
+		return file->ops->FStat(file, stat);
 }
 
 /*
@@ -535,9 +535,9 @@ int FStat(struct File *file, struct VFS_File_Stat *stat)
 int Read(struct File *file, void *buf, ulong_t len)
 {
     if (file->ops->Read == 0)
-	return EUNSUPPORTED;
+		return EUNSUPPORTED;
     else
-	return file->ops->Read(file, buf, len);
+		return file->ops->Read(file, buf, len);
 }
 
 /*
@@ -551,9 +551,9 @@ int Read(struct File *file, void *buf, ulong_t len)
 int Write(struct File *file, void *buf, ulong_t len)
 {
     if (file->ops->Write == 0)
-	return EUNSUPPORTED;
+		return EUNSUPPORTED;
     else
-	return file->ops->Write(file, buf, len);
+		return file->ops->Write(file, buf, len);
 }
 
 /*
@@ -567,9 +567,9 @@ int Write(struct File *file, void *buf, ulong_t len)
 int Seek(struct File *file, ulong_t len)
 {
     if (file->ops->Seek == 0)
-	return EUNSUPPORTED;
+		return EUNSUPPORTED;
     else
-	return file->ops->Seek(file, len);
+		return file->ops->Seek(file, len);
 }
 
 /*
@@ -638,19 +638,23 @@ int Create_Directory(const char *path)
     const char *suffix;
     struct Mount_Point *mountPoint;
 
+    /* Check whether relative path */
+    if (*path != '/')
+		Convert_To_Abs_Path(path);
+		
     /* Split path into prefix and suffix */
     if (!Unpack_Path(path, prefix, &suffix))
-	return ENOTFOUND;
-
+		return ENOTFOUND;
+	
     /* Get mount point for path */
     mountPoint = Lookup_Mount_Point(prefix);
     if (mountPoint == 0)
-	return ENOTFOUND;
+		return ENOTFOUND;
 
     if (mountPoint->ops->Create_Directory == 0)
-	return EUNSUPPORTED;
+		return EUNSUPPORTED;
     else
-	return mountPoint->ops->Create_Directory(mountPoint, suffix);
+		return mountPoint->ops->Create_Directory(mountPoint, suffix);
 }
 
 /*
@@ -665,14 +669,18 @@ int Delete(const char *path)
     const char *suffix;
     struct Mount_Point *mountPoint;
 
+    /* Check whether relative path */
+    if (*path != '/')
+		Convert_To_Abs_Path(path);
+		
     /* Split path into prefix and suffix */
     if (!Unpack_Path(path, prefix, &suffix))
-	return ENOTFOUND;
+		return ENOTFOUND;
 
     /* Get mount point for path */
     mountPoint = Lookup_Mount_Point(prefix);
     if (mountPoint == 0)
-	return ENOTFOUND;
+		return ENOTFOUND;
 
     if (mountPoint->ops->Delete == 0)
 		return EUNSUPPORTED;
@@ -729,9 +737,9 @@ struct Paging_Device *Get_Paging_Device(void)
 
 int Get_Path(struct path *path, char* spath)
 {
-	strcpy(spath, path->pathPrefix);
-	strcpy(spath+strlen(path->pathPrefix), "/");
-	//Print("Get_Path : %s\n", path->pathPrefix);
+	strcpy(spath, "/");
+	strcat(spath, path->pathPrefix);
+
 	struct Mount_Point *mountPoint;
 	mountPoint = Lookup_Mount_Point(path->pathPrefix);
 	if (mountPoint == 0)
@@ -740,7 +748,7 @@ int Get_Path(struct path *path, char* spath)
     if (mountPoint->ops->Get_Path == 0)
 		return EUNSUPPORTED;
     else
-		return mountPoint->ops->Get_Path(mountPoint, path->dentry, spath + strlen(path->pathPrefix)+1);
+		return mountPoint->ops->Get_Path(mountPoint, path->dentry, spath + strlen(spath));
 }
 
 int Lookup(char *spath, struct path *path)
@@ -748,6 +756,10 @@ int Lookup(char *spath, struct path *path)
     char prefix[MAX_PREFIX_LEN + 1];
     const char *suffix;
     struct Mount_Point *mountPoint;
+    
+    /* Check whether relative path */
+    if (*spath != '/')
+		Convert_To_Abs_Path(spath);
 
     /* Split path into prefix and suffix */
     if (!Unpack_Path(spath, prefix, &suffix))
@@ -759,10 +771,9 @@ int Lookup(char *spath, struct path *path)
 		return ENOTFOUND;
 
 	strcpy(path->pathPrefix, prefix);
-	//Free(path->dentry);
 
     if (mountPoint->ops->Lookup == 0)
 		return EUNSUPPORTED;
     else
-		return mountPoint->ops->Lookup(mountPoint, suffix, &path->dentry);
+		return mountPoint->ops->Lookup(mountPoint, suffix, &(path->dentry));
 }

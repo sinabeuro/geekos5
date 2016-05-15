@@ -396,7 +396,7 @@ static int Sys_OpenDirectory(struct Interrupt_State *state)
 	if((rc = Open_Directory(path, pDir)) < 0){ /* important */
 		fd = rc;
 	}
-	Print("%d, fileList[fd] : %x\n", fd, fileList[fd]);
+	//Print("%d, fileList[fd] : %x\n", fd, fileList[fd]);
 	Disable_Interrupts();
 
 	return fd;
@@ -606,12 +606,8 @@ static int Sys_Format(struct Interrupt_State *state)
 
 static Sys_GetCwd(struct Interrupt_State *state)
 {
-	//struct path *pwd = Get_Cwd();
-	//struct path *path = (struct path *)Malloc(sizeof(struct path));
 	char spath[VFS_MAX_PATH_LEN];
-	//path->dentry
 	Enable_Interrupts();
-	Print("Sys_GetCwd : %s\n", ((struct path*)Get_Cwd())->pathPrefix);	
 	Get_Path(Get_Cwd(), spath);
 	Disable_Interrupts();
 	Copy_To_User(state->ebx, spath, state->ecx);
@@ -623,14 +619,17 @@ static Sys_ChangeDir(struct Interrupt_State *state)
 	char spath[VFS_MAX_PATH_LEN];
 	struct VFS_File_Stat vfsFileStat;
 	struct path *path;
+	void* dentry;
 	int rc = 0; 
 	Copy_String_From_User(spath, state->ebx);
 
 	/* Check whether path is vaild */
     Enable_Interrupts();
     path = Get_Cwd();
-	Lookup(spath, path);
- 
+    dentry = path->dentry;
+	Lookup(spath, path); /* weak */
+    Free(dentry);
+    
 	fail:
 	
 	Disable_Interrupts();

@@ -34,23 +34,25 @@ int main(int argc, char **argv)
     const char *filename;
 
     if (argc != 2) {
-	Print("Usage: ls <filename>\n");
-	return 1;
+		//Print("Usage: ls <filename>\n");
+		//return 1;
+		filename = "";
     }
-
-    filename = argv[1];
-
+	else{
+    	filename = argv[1];
+	}
+	
     rc = Stat(filename, &stat);
     if (rc != 0) {
-		Print("Could not stat %s: %s\n", argv[1], Get_Error_String(rc));
+		Print("Could not stat %s: %s\n", filename, Get_Error_String(rc));
 		return 1;
     }
 
     if (!stat.isDirectory) {
-		List_File(argv[1], &stat);
+		List_File(filename, &stat);
     } 
 	else {
-		int fd = Open_Directory(argv[1]);
+		int fd = Open_Directory(filename);
 		struct VFS_Dir_Entry dirent;
 
 		if (fd < 0) {
