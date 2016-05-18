@@ -104,7 +104,7 @@ GENERATED_LIBC_SRCS := libc/errno.c
 
 # User program source files.
 USER_C_SRCS := \
-	workload.c \
+	workload.c long.c ping.c pong.c\
 	rec.c \
 	ls.c touch.c tstwrite.c type.c mkdir.c sync.c cp.c rm.c\
 	format.c mount.c cat.c p5test.c \

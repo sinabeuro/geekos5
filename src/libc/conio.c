@@ -121,10 +121,10 @@ void Read_Line(char* buf, size_t bufSize, int boundary)
 		    k = '\n';
 
 		if (k == ASCII_BS) { /* Backspace */
-		    if (n > 0) {
+			Get_Cursor(&startrow, &tempcol); 
+		    if (n > 0 && tempcol > boundary) { /* For history */
 				char last = *(ptr - 1);
 				int newcol = startcol;
-				Get_Cursor(&startrow, &tempcol); 
 				tempcol -= startcol+1;
 				size_t i;
 

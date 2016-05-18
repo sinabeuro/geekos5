@@ -1,4 +1,4 @@
-
+#include <conio.h>
 #include "libuser.h"
 #include "process.h"
 
@@ -12,7 +12,10 @@ int main(int argc, char **argv)
   scr_sem = Create_Semaphore ("screen" , 1) ;   /* register for screen use */
 
   for (i=0; i < 200; i++) {
-      for (j=0 ; j < 10000 ; j++) ;
+      for (j=0 ; j < 200000; j++) ;
+	  Set_Attr(ATTRIB(BLACK, MAGENTA|BRIGHT));
+	  Print("Long");
+	  Set_Attr(ATTRIB(BLACK, GRAY));
       now = Get_Time_Of_Day();
   }
   elapsed = Get_Time_Of_Day() - start;

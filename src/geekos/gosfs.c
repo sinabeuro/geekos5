@@ -107,7 +107,7 @@ static int GOSFS_Close(struct File *file)
 {
     /*
      * The GOSFS_File object caching the contents of the file
-     * will remain in the PFAT_Instance object, to speed up
+     * will remain in the GOSFS_Instance object, to speed up
      * future accesses to this file.
      */
     return 0;
@@ -165,11 +165,14 @@ static int GOSFS_Read_Entry(struct File *dir, struct VFS_Dir_Entry *entry)
 		rc = EUNSPECIFIED;
 		goto fail;
 	}
+	
 	while(dir->filePos < dir->endPos){
 		i = dir->filePos/sizeof(struct GOSFS_Dir_Entry);
 		dentry = &((struct GOSFS_Dir_Entry *)pBuf->data)[i];
 		dir->filePos += sizeof(struct GOSFS_Dir_Entry);
-		if(dentry->flags != 0){
+		if(	dentry->flags == GOSFS_DIRENTRY_USED ||
+			dentry->flags == GOSFS_DIRENTRY_ISDIRECTORY ||
+			dentry->flags == GOSFS_DIRENTRY_SETUID ){ /* weak */
 			break;
 		}
 	}
@@ -197,7 +200,7 @@ static int GOSFS_Read_Entry(struct File *dir, struct VFS_Dir_Entry *entry)
 	Release_FS_Buffer(fscache, pBuf);
 	return rc;
 	
-	TODO("GeekOS filesystem Read_Entry operation");
+	//TODO("GeekOS filesystem Read_Entry operation");
 }
 
 /*static*/ struct File_Ops s_gosfsDirOps = {
@@ -231,11 +234,10 @@ static int Do_GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 
     /* Special case: root directory. */
     if (strcmp(path, "/") == 0){
-    	//Print("ROOT\n");
 		return 0;
 	}
 	
-	while(strcmp(suffix, "/") != 0){ // weak
+	while(strcmp(suffix, "/") != 0){ /* weak */
 		Unpack_Path(path, prefix, &suffix);
 		Debug("%s, %s\n", prefix, suffix);
 		minFreeEntry = -1;
@@ -752,14 +754,16 @@ static GOSFS_Get_Path(struct Mount_Point *mountPoint, void *dentry, char *path)
 	struct GOSFS_Dir_Entry* prevBlkEntry; /* weak : Naming is not reasonable*/
 	int i;
 	int curBlkNum, prevBlkNum;
+	int rc = 0;
 
-	Debug("GOSFS_Get_Path %d, %d\n", dentryPtr->base, dentryPtr->offset);
-	Debug("filename : %s\n", Get_Entry_By_Ptr(instance, dentryPtr)->filename);
+	//Print("GOSFS_Get_Path %d, %d\n", dentryPtr->base, dentryPtr->offset);
+	//Print("filename : %s\n", Get_Entry_By_Ptr(instance, dentryPtr)->filename);
 
 	/* Root directory */
 	if(Get_Entry_By_Ptr(instance, dentryPtr)->blockList[0] == ((Super_Block*)(instance->fsinfo->data))->rootDirectoryPointer)
-		return EUNSPECIFIED;
-
+	{
+		goto done;
+	}
 	strcat(path, "/");
 	path++;
 		
@@ -784,16 +788,19 @@ static GOSFS_Get_Path(struct Mount_Point *mountPoint, void *dentry, char *path)
 	while(true){
 		temp->base = curBlkNum = prevBlkNum;
 		temp->offset = 1; /* This means '..' */
+		//Print("get prev block num\n");
 		prevBlkEntry = Get_Entry_By_Ptr(instance, temp); 
 		prevBlkNum = prevBlkEntry->blockList[0];
 
 		if(temp->base == prevBlkNum) /* Reach to root? */
 			break;
-			
+
+		//Print("get prev block\n");
 		temp->base = prevBlkNum;
 		temp->offset = 0; /* Previous block's first entry */
 		gosfsDentry = Get_Entry_By_Ptr(instance, temp);
-		
+
+		//Print("Find dentry at previous block\n");
 		/* Find dentry at previous block*/
 		for (i = 0; i < GOSFS_DIR_ENTRIES_PER_BLOCK; ++i) {
 			if(gosfsDentry[i].blockList[0] == curBlkNum){
@@ -802,22 +809,27 @@ static GOSFS_Get_Path(struct Mount_Point *mountPoint, void *dentry, char *path)
 		}
 
 		/* There is no reference to next block */
-		if(i == GOSFS_DIR_ENTRIES_PER_BLOCK)
-			return EUNSPECIFIED;
+		if(i == GOSFS_DIR_ENTRIES_PER_BLOCK){
+			//Print("There is no reference to next block\n");
+			rc =  EUNSPECIFIED;
+			goto done;
+		}
 
 		/* Add to path */
-		Debug("filename : %s\n", gosfsDentry[i].filename);
+		//Print("filename : %s\n", gosfsDentry[i].filename);
+		//Print("strlen : %d\n", strlen(path));
 		memmove(path + strlen(gosfsDentry[i].filename)+1, path, strlen(path)+1);
 		memcpy(path, gosfsDentry[i].filename, strlen(gosfsDentry[i].filename));
 		memcpy(path+strlen(gosfsDentry[i].filename), "/", 1);
 		if(strcmp(path+strlen(gosfsDentry[i].filename), "/") == 0)
 			strcpy(path+strlen(gosfsDentry[i].filename), "");
+		//Print("%s\n", path);	
 	}
-	Debug("path : %s\n", path);
+
 	done:
 	//path = "/d/";
 	Free(temp);
-	return 0;	
+	return rc;	
 }
 
 static GOSFS_Lookup(struct Mount_Point *mountPoint, char *path, void** dentry)
@@ -836,10 +848,11 @@ static GOSFS_Lookup(struct Mount_Point *mountPoint, char *path, void** dentry)
 		goto done;
 	}
 
-	memcpy(dirEntryPtr, &(pathInfo.dirEntryPtr), sizeof(Dir_Entry_Ptr));
-	Debug("GOSFS_Lookup %d, %d\n", pathInfo.dirEntryPtr.base, pathInfo.dirEntryPtr.offset);
+	memcpy(dirEntryPtr, &pathInfo.dirEntryPtr, sizeof(Dir_Entry_Ptr));
 
 	*dentry = (void*)dirEntryPtr;
+	Debug("GOSFS_Lookup %d, %d, %d\n", pathInfo.dirEntryPtr.base, pathInfo.dirEntryPtr.offset, g_currentThread->pid);
+
 	done:
 		
 	return rc;

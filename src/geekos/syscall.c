@@ -313,7 +313,7 @@ static int Sys_Mount(struct Interrupt_State *state)
      * to make sure they are correctly nul-terminated.
      */
     Enable_Interrupts();
-    Mount(args->devname, args->prefix, args->fstype);
+    rc = Mount(args->devname, args->prefix, args->fstype);
 	Disable_Interrupts();
 	
 done:
@@ -590,6 +590,7 @@ static int Sys_Format(struct Interrupt_State *state)
 {
     char devname[BLOCKDEV_MAX_NAME_LEN];
     char fstype[VFS_MAX_FS_NAME_LEN];
+    int rc = 0;
 
     if (!Copy_From_User(devname, state->ebx, state->ecx))
 		return EINVALID;
@@ -598,20 +599,22 @@ static int Sys_Format(struct Interrupt_State *state)
 		return EINVALID;
 
 	Enable_Interrupts();
-	Format(devname, fstype);
+	rc = Format(devname, fstype);
 	Disable_Interrupts();
     //TODO("Format system call");
-    return 0;
+    return rc;
 }
 
 static Sys_GetCwd(struct Interrupt_State *state)
 {
-	char spath[VFS_MAX_PATH_LEN];
+	char spath[VFS_MAX_PATH_LEN] = {0, };
+	int rc; 
+	
 	Enable_Interrupts();
-	Get_Path(Get_Cwd(), spath);
+	rc = Get_Path(Get_Cwd(), spath);
 	Disable_Interrupts();
 	Copy_To_User(state->ebx, spath, state->ecx);
-	return 0;
+	return rc;
 }
 
 static Sys_ChangeDir(struct Interrupt_State *state)
@@ -627,13 +630,14 @@ static Sys_ChangeDir(struct Interrupt_State *state)
     Enable_Interrupts();
     path = Get_Cwd();
     dentry = path->dentry;
-	Lookup(spath, path); /* weak */
+	if((rc = Lookup(spath, path)) < 0){ /* weak */
+		goto fail;
+	}
+	
     Free(dentry);
     
 	fail:
-	
 	Disable_Interrupts();
-
 	return rc;
 }
 

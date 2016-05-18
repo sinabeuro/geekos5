@@ -31,15 +31,15 @@ int main(int argc, char **argv)
 {
     int rc;
     struct VFS_File_Stat stat;
-    const char *filename;
+    char filename[VFS_MAX_PATH_LEN];
 
     if (argc != 2) {
 		//Print("Usage: ls <filename>\n");
 		//return 1;
-		filename = "";
+		getcwd(filename, VFS_MAX_PATH_LEN);
     }
 	else{
-    	filename = argv[1];
+    	strcpy(filename, argv[1]);
 	}
 	
     rc = Stat(filename, &stat);
@@ -78,6 +78,5 @@ int main(int argc, char **argv)
 		    Exit(1);
 		}
     }
-
     return 0;
 }

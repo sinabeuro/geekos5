@@ -69,10 +69,10 @@ int main(int argc, char **argv)
     while (true) {
 		/* Print shell prompt (bright cyan on black background) */
 		getcwd(pwd, BUFSIZE);
-		Print(":%s\x1B[1;36m$\x1B[37m ", pwd);
+		Print("[:%s]\x1B[1;36m$\x1B[37m ", pwd);
 
 		/* Read a line of input */
-		Read_Line(commandBuf, sizeof(commandBuf), strlen(pwd)+3);		
+		Read_Line(commandBuf, sizeof(commandBuf), strlen(pwd)+5);		
 		command = Strip_Leading_Whitespace(commandBuf);
 		Trim_Newline(command);
 
@@ -104,7 +104,12 @@ int main(int argc, char **argv)
 		    continue;
 		}else if (strncmp(command, "cd", 2) == 0) {
 		    /* Change directory */
- 		    Change_Directory(command + 2); /* weak : need to consider space */
+		    command += 2;
+ 		    if(Change_Directory(command) < 0){ /* weak : need to consider space */
+ 		    	while(*command == ' ')
+ 		    		command++;
+				Print("cd: %s: No such file or direcotry\n", command);
+ 		    }
 		    continue;
 		}
 		else if (strcmp(command, "") == 0) {

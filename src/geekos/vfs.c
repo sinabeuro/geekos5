@@ -330,38 +330,38 @@ int Mount(const char *devname, const char *pathPrefix, const char *fstype)
 
     /* Skip leading slash character(s) */
     while (*pathPrefix == '/')
-	++pathPrefix;
+       ++pathPrefix;
 
-    if (strlen(pathPrefix) > MAX_PREFIX_LEN)
-	return ENAMETOOLONG;
+   if (strlen(pathPrefix) > MAX_PREFIX_LEN)
+       return ENAMETOOLONG;
 
     /* Find the named filesystem type */
-    fs = Lookup_Filesystem(fstype);
-    if (fs == 0)
-	return ENOFILESYS;
+   fs = Lookup_Filesystem(fstype);
+   if (fs == 0)
+       return ENOFILESYS;
     KASSERT(fs->ops->Mount != 0); /* All filesystems must implement Mount(). */
 
     /* Attempt to open the block device */
-    if ((rc = Open_Block_Device(devname, &dev)) < 0)
-	return rc;
+   if ((rc = Open_Block_Device(devname, &dev)) < 0)
+       return rc;
 
     /* Create Mount_Point structure. */
-    mountPoint = (struct Mount_Point*) Malloc(sizeof(*mountPoint));
-    if (mountPoint == 0)
-	goto memfail;
-    memset(mountPoint, '\0', sizeof(*mountPoint));
-    mountPoint->dev = dev;
-    mountPoint->pathPrefix = strdup(pathPrefix);
-    if (mountPoint->pathPrefix == 0)
-	goto memfail;
+   mountPoint = (struct Mount_Point*) Malloc(sizeof(*mountPoint));
+   if (mountPoint == 0)
+       goto memfail;
+   memset(mountPoint, '\0', sizeof(*mountPoint));
+   mountPoint->dev = dev;
+   mountPoint->pathPrefix = strdup(pathPrefix);
+   if (mountPoint->pathPrefix == 0)
+       goto memfail;
 
-    Debug("Mounting %s on %s using %s fs\n", devname, pathPrefix, fstype);
+   Debug("Mounting %s on %s using %s fs\n", devname, pathPrefix, fstype);
 
     /* Call the filesystem mount function. */
-    if ((rc = fs->ops->Mount(mountPoint)) < 0)
-	goto fail;
+   if ((rc = fs->ops->Mount(mountPoint)) < 0)
+       goto fail;
 
-    Debug("Mount succeeded!\n");
+   Debug("Mount succeeded!\n");
 
     /*
      * Add filesystem to mount point list.
@@ -369,23 +369,23 @@ int Mount(const char *devname, const char *pathPrefix, const char *fstype)
      * FIXME: should ensure that there aren't any filesystems
      * mounted on the same filesystem root.
      */
-    Mutex_Lock(&s_vfsLock);
-    Add_To_Back_Of_Mount_Point_List(&s_mountPointList, mountPoint);
-    Mutex_Unlock(&s_vfsLock);
+     Mutex_Lock(&s_vfsLock);
+     Add_To_Back_Of_Mount_Point_List(&s_mountPointList, mountPoint);
+     Mutex_Unlock(&s_vfsLock);
 
-    return 0;
+     return 0;
 
-memfail:
-    rc = ENOMEM;
-fail:
-    if (mountPoint != 0) {
-	if (mountPoint->pathPrefix != 0)
-	    Free(mountPoint->pathPrefix);
-	Free(mountPoint);
-    }
-    if (dev != 0)
-	Close_Block_Device(dev);
-    return rc;
+     memfail:
+     rc = ENOMEM;
+     fail:
+     if (mountPoint != 0) {
+       if (mountPoint->pathPrefix != 0)
+           Free(mountPoint->pathPrefix);
+       Free(mountPoint);
+   }
+   if (dev != 0)
+       Close_Block_Device(dev);
+   return rc;
 }
 
 /*

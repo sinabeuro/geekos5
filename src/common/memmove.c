@@ -50,8 +50,10 @@ memmove(void *d, const void *s, size_t n)
 	else if (src < dst) {
 		src += n;
 		dst += n;
-		while (--n >= 0)
+		do{
 			*--dst = *--src;
+		}
+		while (--n > 0); /* Fixed : because zero is 0xFFFFFFFF in u_int */
 	}
 	return realdst;
 }

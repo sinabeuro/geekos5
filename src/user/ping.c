@@ -16,9 +16,12 @@ int main(int argc , char ** argv)
   ping = Create_Semaphore ("ping" , 1) ;   
   pong = Create_Semaphore ("pong" , 0) ;  
 
-  for (i=0; i < 5; i++) {
+  for (i=0; i < 50; i++) {
        P(pong);
        for (j=0; j < 35; j++);
+	   Set_Attr(ATTRIB(BLACK, AMBER|BRIGHT));
+	   Print("Ping");
+	   Set_Attr(ATTRIB(BLACK, GRAY));
        V(ping);
   }
 

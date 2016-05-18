@@ -15,17 +15,26 @@
 int main(int argc, char *argv[])
 {
     int rc;
+    char run;
 
     if (argc != 3) {
          Print("Usage: format <devname> <fstype>\n");
 	 Exit(1);
     }
 
-    rc = Format(argv[1], argv[2]);
-    if (rc != 0) {
-	Print("Error: Could not format %s as %s: %s\n", argv[1], argv[2], Get_Error_String(rc));
-	Exit(1);
-    }
+    Print("This operation will remove all files in device. Do you really want to run this operation(y/n)? ");
+	Get_Key(); /* Ignore return */
+    run = Get_Key();
+	Print("\n");
+	
+	if(run == 'y')
+	{
+	    rc = Format(argv[1], argv[2]);
+	    if (rc != 0) {
+			Print("Error: Could not format %s as %s: %s\n", argv[1], argv[2], Get_Error_String(rc));
+			Exit(1);
+	    }
+	}
 
     return 0;
 }

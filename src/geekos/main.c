@@ -107,7 +107,7 @@ static void Spawn_Init_Process(void)
 	const char *command = "shell.exe";
 	struct Kernel_Thread **pThread;
 	sh_pid = Spawn(INIT_PROGRAM, command, pThread);
-
+	
   	Join(Lookup_Thread(sh_pid));
     //TODO("Spawn the init process");
 }
