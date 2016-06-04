@@ -25,6 +25,8 @@
 #define VFS_NO_MORE_DIR_ENTRIES 1
 
 #define MAX_PREFIX_LEN 16 /* Moved from vfs.c */
+#define CURR_DIR 0
+#define PREV_DIR 1
 
 struct Mount_Point;
 struct File;

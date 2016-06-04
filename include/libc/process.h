@@ -19,6 +19,7 @@ int Wait(int pid);
 int Get_PID(void);
 int getcwd(char* buf, int size);
 int chdir(const char* dirname);
+void usleep(int us);
 
 
 #endif  /* PROCESS_H */

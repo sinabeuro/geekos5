@@ -69,6 +69,7 @@ enum {
     SYS_FORMAT,		 /* Format filesystem system call  */
     SYS_GETCWD,
     SYS_CHDIR,
+    SYS_USLEEP,
 };
 
 /*

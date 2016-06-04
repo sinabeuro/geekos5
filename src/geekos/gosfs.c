@@ -264,7 +264,7 @@ static int Do_GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 				Debug("entry offset : %d\n", i);
 				break;
 			}
-			// need to fix
+			/* weak : need to fix */
 			else if(minFreeEntry == -1 &&
 					!(entry->flags & GOSFS_DIRENTRY_USED) && 
 					!(entry->flags & GOSFS_DIRENTRY_ISDIRECTORY)){
@@ -285,6 +285,29 @@ static int Do_GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 			Release_FS_Buffer(fscache, pBuf);
 			break;
 	    }
+   	    else if(i == PREV_DIR){ /* weak */
+   	    	Dir_Entry_Ptr temp;
+   	    	int blk = entry->blockList[0];
+   	    	path = suffix;
+   	    	Release_FS_Buffer(fscache, pBuf);
+			temp.base = blk;
+			temp.offset = 0;
+			entry = Get_Entry_By_Ptr(instance, &temp); 
+			temp.base = entry[PREV_DIR].blockList[0];
+			temp.offset = 0;
+			entry = Get_Entry_By_Ptr(instance, &temp); 
+
+			int j;
+			for (j = 0; j < GOSFS_DIR_ENTRIES_PER_BLOCK; ++j) {
+				if(entry[j].blockList[0] == blk){
+					break;
+				}
+			}
+			strcpy(pathInfo->suffix, entry[j].filename);
+			pathInfo->dirEntryPtr.base = temp.base; // need to modify
+			pathInfo->dirEntryPtr.offset = j; 
+			base = entry[j].blockList[0];
+	    }
 	   	else{
 	   		path = suffix;
    			pathInfo->dirEntryPtr.base = base; // need to modify
@@ -301,7 +324,7 @@ static int Do_GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 /*
  * Get a GOSFS_File object representing the file whose directory entry
  * is given.
- */
+*/
 static struct GOSFS_File *Get_GOSFS_File(GOSFS_Instance* instance, Dir_Entry_Ptr* dirEntryPtr)
 {
     ulong_t numBlocks;
@@ -827,7 +850,6 @@ static GOSFS_Get_Path(struct Mount_Point *mountPoint, void *dentry, char *path)
 	}
 
 	done:
-	//path = "/d/";
 	Free(temp);
 	return rc;	
 }
@@ -844,6 +866,7 @@ static GOSFS_Lookup(struct Mount_Point *mountPoint, char *path, void** dentry)
     /* Look up the directory entry */
     if (Do_GOSFS_Lookup(instance, &pathInfo) < 0){ 
 		Debug("ENOTFOUND\n");
+		Free(dirEntryPtr);
 		rc = ENOTFOUND;
 		goto done;
 	}
@@ -854,7 +877,6 @@ static GOSFS_Lookup(struct Mount_Point *mountPoint, char *path, void** dentry)
 	Debug("GOSFS_Lookup %d, %d, %d\n", pathInfo.dirEntryPtr.base, pathInfo.dirEntryPtr.offset, g_currentThread->pid);
 
 	done:
-		
 	return rc;
 
 

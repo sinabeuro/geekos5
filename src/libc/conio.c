@@ -82,7 +82,7 @@ void Read_Line(char* buf, size_t bufSize, int boundary)
 					   break;
 				   case 0x4d: /* Right */
 					   Get_Cursor(&startrow, &tempcol);
-					   if(tempcol <= n + 1){
+					   if(tempcol <= boundary + n - 1){ /* weak : by just sense */
 					   		Put_Cursor(startrow, tempcol+1);
 					   	}
 					   break;

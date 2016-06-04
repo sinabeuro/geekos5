@@ -6,15 +6,15 @@
 #include <conio.h>
 #include <string.h>
 
-void Recurse(int x)
+int Recurse(int x)
 {
     int stuff[512];
 
-    if (x == 0) return;
+    if (x == 0) return 0;
 
     stuff[0] = x;
-    Print("calling Recurse %d\n", x);
-    Recurse(x-1);
+    Print("Calling Recurse %d\n", x);
+    return Recurse(x-1) + 1;
 }
 
 int main(int argc, char **argv)
@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 	Print("Depth is %d\n", depth);
     }
 
-    Recurse(depth);
+    Print("Result is %d\n", Recurse(depth));
 
     return 0;
 }

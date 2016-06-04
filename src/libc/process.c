@@ -26,7 +26,7 @@ DEF_SYSCALL(Wait,SYS_WAIT,int,(int pid),int arg0 = pid;,SYSCALL_REGS_1)
 DEF_SYSCALL(Get_PID,SYS_GETPID,int,(void),,SYSCALL_REGS_0)	
 DEF_SYSCALL(getcwd,SYS_GETCWD,int,(char* buf, int size), char *arg0 = buf; int arg1 = size;, SYSCALL_REGS_2)
 DEF_SYSCALL(chdir,SYS_CHDIR,int,(const char* dirname), char *arg0 = dirname;, SYSCALL_REGS_1)
-
+DEF_SYSCALL(usleep,SYS_USLEEP,void,(int us), char *arg0 = us;, SYSCALL_REGS_1)
 
 #define CMDLEN 79
 

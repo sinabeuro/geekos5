@@ -52,9 +52,9 @@ int g_Quantum = DEFAULT_MAX_TICKS;
  * Ticks per second.
  * FIXME: should set this to something more reasonable, like 100.
  */
-#define TICKS_PER_SEC 18
+#define TICKS_PER_SEC 1000
 
-/*#define DEBUG_TIMER */
+//#define DEBUG_TIMER
 #ifdef DEBUG_TIMER
 #  define Debug(args...) Print(args)
 #else
@@ -79,12 +79,12 @@ static void Timer_Interrupt_Handler(struct Interrupt_State* state)
     /* update timer events */
     for (i=0; i < timeEventCount; i++) {
 	if (pendingTimerEvents[i].ticks == 0) {
-	    if (timerDebug) Print("timer: event %d expired (%d ticks)\n", 
-	        pendingTimerEvents[i].id, pendingTimerEvents[i].origTicks);
-	    (pendingTimerEvents[i].callBack)(pendingTimerEvents[i].id);
-	} else {
-	    pendingTimerEvents[i].ticks--;
-	}
+		    if (timerDebug) Print("timer: event %d expired (%d ticks)\n", 
+		        pendingTimerEvents[i].id, pendingTimerEvents[i].origTicks);
+		    (pendingTimerEvents[i].callBack)(pendingTimerEvents[i].id);
+		} else {
+		    pendingTimerEvents[i].ticks--;
+		}
     }
 
     /*
@@ -93,14 +93,14 @@ static void Timer_Interrupt_Handler(struct Interrupt_State* state)
      * to choose a new thread.
      */
     if (current->numTicks >= g_Quantum) {
-	g_needReschedule = true;
-	/*
-	 * The current process is moved to a lower priority queue,
-	 * since it consumed a full quantum.
-	 */
+		g_needReschedule = true;
+		/*
+		 * The current process is moved to a lower priority queue,
+		 * since it consumed a full quantum.
+		 */
         if (current->currentReadyQueue < (MAX_QUEUE_LEVEL - 1)) {
             current->currentReadyQueue++;
-            Print("process %d moved to ready queue %d\n", current->pid, current->currentReadyQueue); 
+            Debug("process %d moved to ready queue %d\n", current->pid, current->currentReadyQueue); 
         }
 
     }
@@ -116,16 +116,16 @@ static void Timer_Interrupt_Handler(struct Interrupt_State* state)
 static void Timer_Calibrate(struct Interrupt_State* state)
 {
     Begin_IRQ(state);
-    if (g_numTicks < CALIBRATE_NUM_TICKS)
-	++g_numTicks;
+    if (g_numTicks < CALIBRATE_NUM_TICKS + 100)
+		++g_numTicks;
     else {
-	/*
-	 * Now we can look at EAX, which reflects how many times
-	 * the loop has executed
-	 */
-	/*Print("Timer_Calibrate: eax==%d\n", state->eax);*/
-	s_spinCountPerTick = INT_MAX  - state->eax;
-	state->eax = 0;  /* make the loop terminate */
+		/*
+		 * Now we can look at EAX, which reflects how many times
+		 * the loop has executed
+		 */
+		/*Print("Timer_Calibrate: eax==%d\n", state->eax);*/
+		s_spinCountPerTick = (INT_MAX  - state->eax)/100;
+		state->eax = 0;  /* make the loop terminate */
     }
     End_IRQ(state);
 }
@@ -201,13 +201,14 @@ void Init_Timer(void)
      * In bochs, it defaults to 18Hz, which is actually pretty
      * reasonable.
      */
-
-    Print("Initializing timer...\n");
+	unsigned long val = 1193180/TICKS_PER_SEC;
+	
+    Print("Initializing timer...\n");    
 
     /* configure for default clock */
     Out_Byte(0x43, 0x36);
-    Out_Byte(0x40, 0x00);
-    Out_Byte(0x40, 0x00);
+    Out_Byte(0x40, val&0xff);
+    Out_Byte(0x40, (val>>8)&0xff);
 
     /* Calibrate for delay loop */
     Calibrate_Delay();
@@ -244,9 +245,9 @@ int Get_Remaing_Timer_Ticks(int id)
 
     KASSERT(!Interrupts_Enabled());
     for (i=0; i < timeEventCount; i++) {
-	if (pendingTimerEvents[i].id == id) {
-	    return pendingTimerEvents[i].ticks;
-	}
+		if (pendingTimerEvents[i].id == id) {
+		    return pendingTimerEvents[i].ticks;
+		}
     }
 
     return -1;
@@ -257,18 +258,18 @@ int Cancel_Timer(int id)
     int i;
     KASSERT(!Interrupts_Enabled());
     for (i=0; i < timeEventCount; i++) {
-	if (pendingTimerEvents[i].id == id) {
-	    pendingTimerEvents[i] = pendingTimerEvents[timeEventCount-1];
-	    timeEventCount--;
-	    return 0;
-	}
+		if (pendingTimerEvents[i].id == id) {
+		    pendingTimerEvents[i] = pendingTimerEvents[timeEventCount-1];
+		    timeEventCount--;
+		    return 0;
+		}
     }
 
     Print("timer: unable to find timer id %d to cancel it\n", id);
     return -1;
 }
 
-#define US_PER_TICK (TICKS_PER_SEC * 1000000)
+#define US_PER_TICK (1000000 / TICKS_PER_SEC)
 
 /*
  * Spin for at least given number of microseconds.
@@ -277,16 +278,21 @@ int Cancel_Timer(int id)
  */
 void Micro_Delay(int us)
 {
-    int num = us * s_spinCountPerTick;
+	#if 0
     int denom = US_PER_TICK;
+    uint_t k = INT_MAX / s_spinCountPerTick + 1;
+    uint_t n = us / k;
+    Print("n=%d\n", n);O
+    uint_t m = us % k;
+    Print("m=%d\n", m);
+    int numSpins = n*(k*s_spinCountPerTick/US_PER_TICK); //+ m*(us-k)*s_spinCountPerTick/US_PER_TICK;
+    #endif  
 
-    int numSpins = num / denom;
-    int rem = num % denom;
+    int ticks = (us < US_PER_TICK)? us : us / US_PER_TICK;
+    int numSpins = ticks * s_spinCountPerTick;
+    Print("Micro_Delay(): us = %d, spinCountPerTick=%d, ticks=%d\n", us, s_spinCountPerTick, ticks);
 
-    if (rem > 0)
-	++numSpins;
-
-    Debug("Micro_Delay(): num=%d, denom=%d, spin count = %d\n", num, denom, numSpins);
-
-    Spin(numSpins);
+	int i;
+	for(i = 0; i < ticks; i++)
+   		Spin(s_spinCountPerTick);
 }

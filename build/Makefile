@@ -43,7 +43,7 @@ endif
 # List of targets to build by default.
 # These targets encompass everything needed to boot
 # and run GeekOS.
-ALL_TARGETS := fd.img diskc.img diskd.img
+ALL_TARGETS := fd.img diskc.img diskd.img diskc.vdi diskd.vdi
 
 
 # Kernel source file containing implementation of user address space support
@@ -109,6 +109,7 @@ USER_C_SRCS := \
 	ls.c touch.c tstwrite.c type.c mkdir.c sync.c cp.c rm.c\
 	format.c mount.c cat.c p5test.c \
 	shell.c b.c c.c stat.c opendir.c
+	#socoban.c
 # User executables
 USER_PROGS := $(USER_C_SRCS:%.c=user/%.exe)
 
@@ -185,7 +186,7 @@ GENERRS := $(PERL) $(PROJECT_ROOT)/scripts/generrs
 # ----------------------------------------------------------------------
 
 # Flags used for all C source files
-GENERAL_OPTS := -O -Wall $(EXTRA_C_OPTS) -fno-stack-protector -fno-omit-frame-pointer
+GENERAL_OPTS := -O -Wall $(EXTRA_C_OPTS) -fno-stack-protector -fno-omit-frame-pointer 
 CC_GENERAL_OPTS := $(GENERAL_OPTS) #-Werror 
 
 # Flags used for kernel C source files
@@ -265,6 +266,14 @@ diskc.img : $(USER_PROGS) $(BUILDFAT)
 # This will be used for the GeekOS filesystem (GOSFS) image.
 diskd.img :
 	$(ZEROFILE) $@ 20480
+
+diskc.vdi: diskc.img
+	rm $@
+	VBoxManage convertdd $^ $@ --format VDI --variant Fixed
+
+#diskd.vdi: diskd.img
+#	rm $@
+#	VBoxManage convertdd $^ $@ --format VDI --variant Fixed
 
 # Tool to build PFAT filesystem images
 $(BUILDFAT) : $(PROJECT_ROOT)/src/tools/buildFat.c $(PROJECT_ROOT)/include/geekos/pfat.h

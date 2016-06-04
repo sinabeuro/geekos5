@@ -605,7 +605,7 @@ static int Sys_Format(struct Interrupt_State *state)
     return rc;
 }
 
-static Sys_GetCwd(struct Interrupt_State *state)
+static int Sys_GetCwd(struct Interrupt_State *state)
 {
 	char spath[VFS_MAX_PATH_LEN] = {0, };
 	int rc; 
@@ -617,7 +617,7 @@ static Sys_GetCwd(struct Interrupt_State *state)
 	return rc;
 }
 
-static Sys_ChangeDir(struct Interrupt_State *state)
+static int Sys_ChangeDir(struct Interrupt_State *state)
 {
 	char spath[VFS_MAX_PATH_LEN];
 	struct VFS_File_Stat vfsFileStat;
@@ -633,7 +633,6 @@ static Sys_ChangeDir(struct Interrupt_State *state)
 	if((rc = Lookup(spath, path)) < 0){ /* weak */
 		goto fail;
 	}
-	
     Free(dentry);
     
 	fail:
@@ -641,7 +640,11 @@ static Sys_ChangeDir(struct Interrupt_State *state)
 	return rc;
 }
 
-
+static void Sys_Usleep(struct Interrupt_State *state)
+{
+	Micro_Delay(state->ebx);
+	//Start_Timer(state->ebx, NULL);
+}
 
 /*
  * Global table of system call handler functions.
@@ -682,6 +685,7 @@ const Syscall g_syscallTable[] = {
     /* Pwd */
     Sys_GetCwd,
     Sys_ChangeDir,
+    Sys_Usleep,
 };
 
 /*

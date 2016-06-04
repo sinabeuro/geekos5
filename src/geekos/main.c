@@ -45,7 +45,8 @@
 #endif
 
 #define INIT_PWD "/" ROOT_PREFIX
-#define INIT_PROGRAM INIT_PWD "/shell.exe"
+#define INIT_BIN "shell.exe"
+#define INIT_PROGRAM INIT_PWD "/" INIT_BIN
 
 
 int sh_pid;
@@ -104,7 +105,7 @@ static void Mount_Root_Filesystem(void)
 
 static void Spawn_Init_Process(void)
 {
-	const char *command = "shell.exe";
+	const char *command = INIT_BIN;
 	struct Kernel_Thread **pThread;
 	sh_pid = Spawn(INIT_PROGRAM, command, pThread);
 	

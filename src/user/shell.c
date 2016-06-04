@@ -102,9 +102,9 @@ int main(int argc, char **argv)
 		else if (strncmp(command, "history", 7) == 0) {
 		    Print_History(&history);
 		    continue;
-		}else if (strncmp(command, "cd", 2) == 0) {
+		}else if (strncmp(command, "cd ", 3) == 0) {
 		    /* Change directory */
-		    command += 2;
+		    command += 3;
  		    if(Change_Directory(command) < 0){ /* weak : need to consider space */
  		    	while(*command == ' ')
  		    		command++;
