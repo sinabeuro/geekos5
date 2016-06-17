@@ -289,8 +289,8 @@ void Micro_Delay(int us)
     #endif  
 
     int ticks = (us < US_PER_TICK)? us : us / US_PER_TICK;
-    int numSpins = ticks * s_spinCountPerTick;
-    Print("Micro_Delay(): us = %d, spinCountPerTick=%d, ticks=%d\n", us, s_spinCountPerTick, ticks);
+    //int numSpins = ticks * s_spinCountPerTick;
+    Debug("Micro_Delay(): us = %d, spinCountPerTick=%d, ticks=%d\n", us, s_spinCountPerTick, ticks);
 
 	int i;
 	for(i = 0; i < ticks; i++)

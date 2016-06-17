@@ -9,6 +9,7 @@
  */
 
 #include <geekos/argblock.h>
+#include <libuser.h>
 
 int main(int argc, char **argv);
 void Exit(int exitCode);
@@ -19,9 +20,16 @@ void Exit(int exitCode);
 void _Entry(void)
 {
     struct Argument_Block *argBlock;
+    int startHeap;
+    void* ptr;
 
     /* The argument block pointer is in the ESI register. */
     __asm__ __volatile__ ("movl %%esi, %0" : "=r" (argBlock));
+	/* The end of data segment address is in the EAX register. */
+    __asm__ __volatile__ ("movl %%eax, %0" : "=r" (startHeap));
+
+    Init_Heap((void*) startHeap, 4*4096*4096);
+	//Print("%x\n", Malloc(8192));
 
     /* Call main(), and then exit with whatever value it returns. */
     Exit(main(argBlock->argc, argBlock->argv));

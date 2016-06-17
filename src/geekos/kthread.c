@@ -341,7 +341,7 @@ static void Setup_Kernel_Thread(
 	Push(kthread, 0);
 	
 	/* Push initial values for general-purpose registers. */
-	Push(kthread, 0);  /* eax */
+	Push(kthread, (ulong_t)(userContext->size));  /* eax */
 	Push(kthread, 0);  /* ebx */
 	Push(kthread, 0);  /* edx */
 	Push(kthread, 0);  /* edx */

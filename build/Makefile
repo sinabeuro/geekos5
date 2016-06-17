@@ -93,7 +93,8 @@ LIBC_C_SRCS := \
 	sched.c sema.c \
 	fileio.c \
 	compat.c process.c\
-	conio.c history.c 
+	conio.c history.c \
+	bget.c
 
 # User libc object files.
 LIBC_C_OBJS := $(LIBC_C_SRCS:%.c=libc/%.o)
@@ -108,8 +109,8 @@ USER_C_SRCS := \
 	rec.c \
 	ls.c touch.c tstwrite.c type.c mkdir.c sync.c cp.c rm.c\
 	format.c mount.c cat.c p5test.c \
-	shell.c b.c c.c stat.c opendir.c
-	#socoban.c
+	shell.c b.c c.c stat.c opendir.c \
+	sokoban.c gv_test.c
 # User executables
 USER_PROGS := $(USER_C_SRCS:%.c=user/%.exe)
 
@@ -186,7 +187,7 @@ GENERRS := $(PERL) $(PROJECT_ROOT)/scripts/generrs
 # ----------------------------------------------------------------------
 
 # Flags used for all C source files
-GENERAL_OPTS := -O -Wall $(EXTRA_C_OPTS) -fno-stack-protector -fno-omit-frame-pointer 
+GENERAL_OPTS := -O -Wall $(EXTRA_C_OPTS) -fno-stack-protector -fno-omit-frame-pointer -std=c99
 CC_GENERAL_OPTS := $(GENERAL_OPTS) #-Werror 
 
 # Flags used for kernel C source files
@@ -196,7 +197,7 @@ CC_KERNEL_OPTS := -g -DGEEKOS -I$(PROJECT_ROOT)/include
 NASM_KERNEL_OPTS := -I$(PROJECT_ROOT)/src/geekos/ -f elf $(EXTRA_NASM_OPTS)
 
 # Flags used for common library and libc source files
-CC_USER_OPTS := -I$(PROJECT_ROOT)/include -I$(PROJECT_ROOT)/include/libc \
+CC_USER_OPTS := -O2 -I$(PROJECT_ROOT)/include -I$(PROJECT_ROOT)/include/libc \
 	$(EXTRA_CC_USER_OPTS)
 
 # Flags passed to objcopy program (strip unnecessary sections from kernel.exe)

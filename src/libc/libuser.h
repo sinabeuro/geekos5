@@ -16,7 +16,11 @@ Keycode Get_Key(void);
 int Spawn_Program(char* program);
 int Wait(unsigned int pid);
 
+void Init_Heap(unsigned int start, unsigned int size);
 void *Malloc(unsigned int size);
+void *Calloc(size_t count, size_t size);
+void *Realloc(void* buf, size_t size);
+void Free(void* buf);
 
 void* memset(void* s, int c, size_t n);
 void* memcpy(void *dst, const void* src, size_t n);

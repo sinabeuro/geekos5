@@ -208,12 +208,14 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 		struct Exe_Segment *segment = &exeFormat->segmentList[i];
 		ulong_t startAddress = USER_BASE_ADRR + segment->startAddress;
 		ulong_t offsetInFile = segment->offsetInFile;	
-		Debug("\nSegment %d : \n", i);
+		Debug("\nSegment %d : %d\n", i, segment->lengthInFile);
 		Debug( "%6s %-12s%-15s%-15s\n",
 			   "Idx", "Start VAddr", "Offset In File", "Sample Data" );
 		Debug( "%6d %-12x%-15x0x%-15x\n",
 			   PAGE_DIRECTORY_INDEX(startAddress), startAddress,
 			   offsetInFile, *(int*)(exeFileData + offsetInFile));
+
+		
 		pde = &base_pde[PAGE_DIRECTORY_INDEX(startAddress)];
 		/* Alloc page table */
 	    for(j=0; j<=PAGE_DIRECTORY_INDEX(segment->lengthInFile); j++) 
@@ -222,7 +224,7 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 	    	if(pde[j].pageTableBaseAddr == '\0') 
 	    	{
 				base_pte = (pte_t*)Alloc_Page();
-			 	memset(base_pte,'\0',PAGE_SIZE);
+			 	memset(base_pte,'\0', PAGE_SIZE);
 			}
 			else
 			{
@@ -247,6 +249,11 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 				memcpy(paddr,
 					   exeFileData + PAGE_ADDR(segment->offsetInFile + PAGE_ADDR_BY_IDX(j, k)),
 					   PAGE_SIZE);
+				if(k == PAGE_TABLE_INDEX(segment->lengthInFile))
+				{
+					int sizeOfEnd = ((segment->startAddress%PAGE_SIZE)+segment->lengthInFile)%PAGE_SIZE;
+					memset(paddr + sizeOfEnd, 0, PAGE_SIZE-sizeOfEnd);
+				}
 				Debug( "%6d %-12x%-15x%-15x%-15x\n", k, vaddr, paddr,
 						PAGE_ADDR(segment->offsetInFile + PAGE_ADDR_BY_IDX(j, k)),
 						*(int*)paddr);

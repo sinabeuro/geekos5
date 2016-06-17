@@ -28,7 +28,6 @@ static void GPF_Handler(struct Interrupt_State* state)
     Print("Exception %d received, killing thread %p\n",
 	state->intNum, g_currentThread);
     Dump_Interrupt_State(state);
-
     Exit(-1);
 
     /* We will never get here */

@@ -96,8 +96,8 @@ static void Print_Fault_Info(uint_t address, faultcode_t faultCode)
     faultCode = *((faultcode_t *) &(state->errorCode));
 
     /* rest of your handling code here */
-    Print ("Unexpected Page Fault received\n");
-    Print_Fault_Info(address, faultCode);
+	// Print ("Unexpected Page Fault received\n");
+    // Print_Fault_Info(address, faultCode);
     //Dump_Interrupt_State(state);
 
     if(faultCode.protectionViolation == 0) // Non-present page
@@ -126,14 +126,15 @@ static void Print_Fault_Info(uint_t address, faultcode_t faultCode)
 		k = PAGE_TABLE_INDEX(address);
 		kernelInfo = pte[k].kernelInfo;
 		paddr = Alloc_Pageable_Page(&pte[k], PAGE_ADDR(address));
-		if(paddr == 0){
+		
+		if(paddr == 0){ /* There is no free space in swap space*/
 			if(g_currentThread->pid != sh_pid)
 				Exit(-1);
 		}
 	
 		if(kernelInfo == KINFO_PAGE_ON_DISK) // case 2
 		{
-			Print ("KINFO_PAGE_ON_DISK\n");
+			//Print ("KINFO_PAGE_ON_DISK\n");
 			Enable_Interrupts();
 			Read_From_Paging_File(paddr, address, pte[k].pageBaseAddr);
 			Disable_Interrupts();

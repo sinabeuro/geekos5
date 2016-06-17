@@ -29,6 +29,7 @@ static void List_File(const char *filename, struct VFS_File_Stat *stat)
 
 int main(int argc, char **argv)
 {
+	int i;
     int rc;
     struct VFS_File_Stat stat;
     char filename[VFS_MAX_PATH_LEN];

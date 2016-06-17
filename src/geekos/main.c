@@ -54,6 +54,22 @@ int sh_pid;
 static void Mount_Root_Filesystem(void);
 static void Spawn_Init_Process(void);
 
+int GetPhysicalMemorySize()
+{
+	volatile unsigned char *pData, ch;
+	volatile int i;
+	for( i = 2; i < 512; i++ )
+	{
+		pData = (unsigned char *)(i * (unsigned long)(0x100000));
+		ch = pData[0];
+		ch++;
+		pData[0] = ch;
+		if ( ch != pData[0] )
+		break;
+	}
+	return i;
+}
+
 /*
  * Kernel C code entry point.
  * Initializes kernel subsystems, mounts filesystems,
@@ -61,6 +77,8 @@ static void Spawn_Init_Process(void);
  */
 void Main(struct Boot_Info* bootInfo)
 {
+
+	bootInfo->memSizeKB = GetPhysicalMemorySize() * 1024;	
     Init_BSS();
     Init_Screen();
     Init_Mem(bootInfo);
