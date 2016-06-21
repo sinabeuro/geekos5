@@ -12,7 +12,7 @@
 #include <geekos/kassert.h>
 #include <geekos/screen.h>
 #include <geekos/synch.h>
-
+#include <geekos/user.h>
 /*
  * NOTES:
  * - The GeekOS mutex and condition variable APIs are based on those
@@ -33,6 +33,8 @@ int Create_Semaphore(char* name, int ival)
 {
 	struct Semaphore* sema = (&s_semaphoreList)->head;
 	static ulong_t sid = 1;
+	int i;
+	int* userSemaphoreList;
 	
 	//find sem by sname
 	while (sema != 0)
@@ -45,15 +47,29 @@ int Create_Semaphore(char* name, int ival)
 		sema = Get_Next_In_Semaphore_List(sema);
 	}
 
-	//if there is no sem, create sem
+	/* If there is no sem, then create sem */
 	sema = (struct Semaphore*)Malloc(sizeof(struct Semaphore));
 	sema->sid = sid++;
 	memcpy(sema->name, name, 25);
 	sema->count = ival;
-	//sema->refCount = 1;
+	sema->refCount++;
 	Mutex_Init(&(sema->mutex));
 	Cond_Init(&(sema->cond));
 	Add_To_Back_Of_Semaphore_List(&s_semaphoreList, sema);
+
+	userSemaphoreList = g_currentThread->userContext->semaphores;
+	for(i = 0; i < USER_MAX_FILES; i++){
+		if(userSemaphoreList[i] == NULL){
+			userSemaphoreList[i] = sema->sid;
+			break;
+		}
+	}
+	
+	if(i == USER_MAX_FILES)
+	{
+		/* weak */
+	}
+	
 	//Print("new sema->name: %s, %d\n", sema->name, sema->sid);
 	return sema->sid;
 	
@@ -62,19 +78,34 @@ int Create_Semaphore(char* name, int ival)
 int Destroy_Semaphore(int sid)
 {
 	struct Semaphore* sema = (&s_semaphoreList)->head;
+	int i;
+	int* userSemaphoreList;
 
-	//find sem by sid
-	while (sema != 0)
-	{
-		if (sema->sid == sid)
-		{
-			Remove_From_Semaphore_List(&s_semaphoreList, sema);
-			Free(sema);
+	/* Find sem by sid */
+	while (sema != 0) {
+		if (sema->sid == sid) {
+			if(--sema->refCount == 0) {
+				//Print("*** Destoroyed Sem : %d ***\n", sid);
+				Remove_From_Semaphore_List(&s_semaphoreList, sema);
+				Free(sema);
+			}
+			userSemaphoreList = g_currentThread->userContext->semaphores;
+			for(i = 0; i < USER_MAX_FILES; i++){
+				if(userSemaphoreList[i] == sid){
+					userSemaphoreList[i] = NULL;
+					break;
+				}
+			}
+
+			if(i == USER_MAX_FILES)
+			{
+				/* weak */
+			}
+
 			return 0;
 		}
 		sema = Get_Next_In_Semaphore_List(sema);
 	}
-	
 	return -1;
 }
 
@@ -84,7 +115,7 @@ int P(int sid)
 	struct Mutex* mutex;
 	struct Condition* cond;
 
-	//find sem by sid
+	/* Find sem by sid */
 	while (sema != 0)
 	{
 		if (sema->sid == sid)

@@ -132,6 +132,7 @@ int Spawn(const char *program, const char *command, struct Kernel_Thread **pThre
 	Load_User_Program(exeFileData, exeFileLength, &exeFormat, command,
     (struct User_Context **)&pUserContext);
 
+	Free(exeFileData);
 	*pThread = Start_User_Thread(pUserContext, false);
 
 	return (*pThread)->pid;   

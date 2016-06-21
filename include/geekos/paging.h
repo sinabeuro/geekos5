@@ -15,6 +15,7 @@
 #include <geekos/defs.h>
 #include <geekos/bootinfo.h>
 #include <geekos/list.h>
+#include <limits.h>
 
 struct Page;
 struct User_Context;
@@ -39,7 +40,9 @@ struct User_Context;
 #define VM_READ    0	 /* Memory can be read (ignored for x86) */
 #define VM_EXEC    0	 /* Memory can be executed (ignored for x86) */
 
-#define USER_BASE_ADRR 0x80000000
+#define DEFAULT_USER_STACK_SIZE 4096
+#define END_OF_VM UINT_MAX
+#define USER_BASE_ADRR (END_OF_VM>>1)+1
 
 // Block(or Sector) structure
 typedef struct {

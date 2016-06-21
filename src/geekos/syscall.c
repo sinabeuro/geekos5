@@ -646,6 +646,13 @@ static void Sys_Usleep(struct Interrupt_State *state)
 	//Start_Timer(state->ebx, NULL);
 }
 
+
+static void Sys_SysInfo(struct Interrupt_State *state)
+{
+
+}
+
+
 /*
  * Global table of system call handler functions.
  */

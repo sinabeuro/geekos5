@@ -11,7 +11,7 @@ int main(int argc, char **argv)
   start = Get_Time_Of_Day();
   scr_sem = Create_Semaphore ("screen" , 1) ;   /* register for screen use */
 
-  for (i=0; i < 200; i++) {
+  for (i=0; i < 500; i++) {
       for (j=0 ; j < 200000; j++) ;
 	  Set_Attr(ATTRIB(BLACK, MAGENTA|BRIGHT));
 	  Print("Long");

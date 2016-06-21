@@ -29,6 +29,7 @@
  */
 struct Page* g_pageList;
 
+uint_t g_totalFreePageCount = 0;
 /*
  * Number of pages currently available on the freelist.
  */
@@ -108,6 +109,7 @@ void Init_Mem(struct Boot_Info* bootInfo)
     unsigned numPageListBytes = sizeof(struct Page) * numPages;
     ulong_t pageListAddr;
     ulong_t kernEnd;
+    bool hugeMem = false;
 
     KASSERT(bootInfo->memSizeKB > 0);
 
@@ -123,10 +125,20 @@ void Init_Mem(struct Boot_Info* bootInfo)
      * us sufficiently that we can start allocating pages and
      * keeping track of them.
      */
-    pageListAddr = Round_Up_To_Page((ulong_t) &end);
+    hugeMem = (numPageListBytes > ISA_HOLE_START -  Round_Up_To_Page((ulong_t) &end))? true : false;
+
+	if(hugeMem){
+    	//KASSERT(PAGE_ALLIGNED_ADDR(HIGHMEM_START + KERNEL_HEAP_SIZE) 
+    	//		== HIGHMEM_START + KERNEL_HEAP_SIZE);  // Must be page alined
+		pageListAddr = HIGHMEM_START + KERNEL_HEAP_SIZE;
+		kernEnd = Round_Up_To_Page((ulong_t) &end);
+    }
+    else{
+		pageListAddr = Round_Up_To_Page((ulong_t) &end);
+		kernEnd = Round_Up_To_Page(pageListAddr + numPageListBytes);
+    }
     g_pageList = (struct Page*) pageListAddr;
-    kernEnd = Round_Up_To_Page(pageListAddr + numPageListBytes);
-    s_numPages = numPages;
+	s_numPages = numPages;
 
     /*
      * The initial kernel thread and its stack are placed
@@ -154,13 +166,19 @@ void Init_Mem(struct Boot_Info* bootInfo)
     Add_Page_Range(ISA_HOLE_START, ISA_HOLE_END, PAGE_HW);
     Add_Page_Range(ISA_HOLE_END, HIGHMEM_START, PAGE_ALLOCATED);
     Add_Page_Range(HIGHMEM_START, HIGHMEM_START + KERNEL_HEAP_SIZE, PAGE_HEAP);
-    Add_Page_Range(HIGHMEM_START + KERNEL_HEAP_SIZE, endOfMem, PAGE_AVAIL);
-
+    if(hugeMem){
+    	Add_Page_Range(REST_OF_MEM_START, REST_OF_MEM_START + numPageListBytes, PAGE_KERN);
+    	Add_Page_Range(REST_OF_MEM_START + numPageListBytes, endOfMem, PAGE_AVAIL);
+    }
+    else{
+    	Add_Page_Range(REST_OF_MEM_START, endOfMem, PAGE_AVAIL);
+	}
     /* Initialize the kernel heap */
     Init_Heap(HIGHMEM_START, KERNEL_HEAP_SIZE);
 
+	g_totalFreePageCount = g_freePageCount;
     Print("%uKB memory detected, %u pages in freelist, %d bytes in kernel heap\n",
-	bootInfo->memSizeKB, g_freePageCount, KERNEL_HEAP_SIZE);
+	bootInfo->memSizeKB, g_totalFreePageCount, KERNEL_HEAP_SIZE);
 }
 
 /*

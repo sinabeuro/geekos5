@@ -28,7 +28,7 @@ void _Entry(void)
 	/* The end of data segment address is in the EAX register. */
     __asm__ __volatile__ ("movl %%eax, %0" : "=r" (startHeap));
 
-    Init_Heap((void*) startHeap, 4*4096*4096);
+    Init_Heap((void*) startHeap, 256*1024*1024);
 	//Print("%x\n", Malloc(8192));
 
     /* Call main(), and then exit with whatever value it returns. */

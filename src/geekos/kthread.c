@@ -133,10 +133,10 @@ static struct Kernel_Thread* Create_Thread(int priority, bool detached)
 
     /* Make sure that the memory allocations succeeded. */
     if (kthread == 0)
-	return 0;
+		return 0;
     if (stackPage == 0) {
-	Free_Page(kthread);
-	return 0;
+		Free_Page(kthread);
+		return 0;
     }
 
     /*Print("New thread @ %x, stack @ %x\n", kthread, stackPage); */

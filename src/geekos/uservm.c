@@ -19,9 +19,7 @@
 #include <geekos/user.h>
 #include <geekos/segment.h>
 #include <geekos/gdt.h>
-
-#define DEFAULT_USER_STACK_SIZE 4096
-#define END_OF_VM 0xFFFFFFFF
+#include <geekos/synch.h>
 
 /* ----------------------------------------------------------------------
  * Private functions
@@ -62,13 +60,13 @@ void DisplayMemory(pde_t* pde)
 	Set_Current_Attr(ATTRIB(BLACK, GRAY));	
 	Print("%10s\t%10s\n", "pde", "value" );
 	Print(	"%10x\t%10x\n", 
-			&pde[PAGE_DIRECTORY_INDEX(0xFFFFFFFF)], 
-			pde[PAGE_DIRECTORY_INDEX(0xFFFFFFFF)]);
+			&pde[PAGE_DIRECTORY_INDEX(END_OF_VM)], 
+			pde[PAGE_DIRECTORY_INDEX(END_OF_VM)]);
 	Set_Current_Attr(ATTRIB(BLACK, AMBER|BRIGHT));
 	Print("Page Table\n");
 	Set_Current_Attr(ATTRIB(BLACK, GRAY));
 	Print("%4s\t%10s\t%10s\t%10s\t%10s\n", "idx", "pte addr", "pte value", "pf addr", "pf value" );
-	pte = pde[PAGE_DIRECTORY_INDEX(0xFFFFFFFF)].pageTableBaseAddr<<12;
+	pte = pde[PAGE_DIRECTORY_INDEX(END_OF_VM)].pageTableBaseAddr<<12;
 	for(i=1022; i<1024; i++)
 	{
 		Print(	"%10d\t%10x\t%10x\t%10x\t%10x\n",
@@ -80,6 +78,7 @@ void DisplayMemory(pde_t* pde)
 	}
 }
 
+extern g_freePageCount;
 /*
  * Destroy a User_Context object, including all memory
  * and other resources allocated within it.
@@ -95,22 +94,23 @@ void Destroy_User_Context(struct User_Context* context)
      *   by the process
      */
 
-    // this function called in kernel mode
+    /* This function is called at kernel mode */
     int i, j;
     pde_t* pde = context->pageDir;
 	pte_t* pte;
 
+	/* Remove page table */
 	for(i = PAGE_DIRECTORY_INDEX(USER_BASE_ADRR); i < NUM_PAGE_DIR_ENTRIES; ++i)
 	{
 		if(pde[i].pageTableBaseAddr == '\0')
 			continue;
-		pte = pde[i].pageTableBaseAddr<<12; // pte is not pageable
+		pte = pde[i].pageTableBaseAddr<<12; /* PTE is not pageable */
 		for(j=0; j < NUM_PAGE_TABLE_ENTRIES; ++j)
 		{
 			Disable_Interrupts();
 			if(pte[j].present == 0 && pte[j].kernelInfo == KINFO_PAGE_ON_DISK)
 			{
-				// this page is in the swap space
+				/* This page is in the swap space */
 				Free_Space_On_Paging_File(pte[j].pageBaseAddr);
 			}
 			else if(pte[j].present == 1)
@@ -125,10 +125,14 @@ void Destroy_User_Context(struct User_Context* context)
 	Free_Page(pde);	
 
 	//Print("complete to free page\n");
+	/* Free files */
+	/* Free samaphores */
+	for(i = 0; i < USER_MAX_FILES; i++)
+		Destroy_Semaphore((context->semaphores)[i]);
     Free_Segment_Descriptor(context->ldtDescriptor);
     //Free(context->memory);
     Free(context);
-	return 0; 
+    return 0; 
 
     //TODO("Destroy User_Context data structure after process exits");
 }
@@ -233,7 +237,7 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 			
 			pde[j].pageTableBaseAddr = (uint_t)PAGE_ALLIGNED_ADDR(base_pte);
 			pde[j].present = 1;
-			pde[j].flags = VM_USER | VM_WRITE;
+			pde[j].flags = VM_USER | VM_WRITE; // weak : code segment?
 
 			pte = &base_pte[PAGE_TABLE_INDEX(startAddress)];
 			Debug( "\n%6s %-12s%-15s%-15s%-15s\n",
@@ -249,11 +253,13 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 				memcpy(paddr,
 					   exeFileData + PAGE_ADDR(segment->offsetInFile + PAGE_ADDR_BY_IDX(j, k)),
 					   PAGE_SIZE);
-				if(k == PAGE_TABLE_INDEX(segment->lengthInFile))
+					   
+				if(k == PAGE_TABLE_INDEX(segment->lengthInFile)) /* End of segment */
 				{
 					int sizeOfEnd = ((segment->startAddress%PAGE_SIZE)+segment->lengthInFile)%PAGE_SIZE;
 					memset(paddr + sizeOfEnd, 0, PAGE_SIZE-sizeOfEnd);
 				}
+				
 				Debug( "%6d %-12x%-15x%-15x%-15x\n", k, vaddr, paddr,
 						PAGE_ADDR(segment->offsetInFile + PAGE_ADDR_BY_IDX(j, k)),
 						*(int*)paddr);
@@ -263,7 +269,7 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 		}
 	}
 
-	// Alloc stack..
+	/* Alloc stack.. */
 	j = PAGE_DIRECTORY_INDEX(stackPointerAddr);
 	pde = &base_pde[j];
 	pte = (pte_t*)Alloc_Page();
@@ -272,7 +278,7 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 	pde->present = 1;
 	pde->flags = VM_USER | VM_WRITE;
 
-	// support up to 4MB
+	/* Support up to 4MB */
 	for(k = NUM_PAGE_TABLE_ENTRIES-PAGE_TABLE_INDEX(DEFAULT_USER_STACK_SIZE + argBlockSize)-1; 
 		k < NUM_PAGE_TABLE_ENTRIES; k++){
 		vaddr = PAGE_ADDR_BY_IDX(j, k);
@@ -296,14 +302,14 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 	(*pUserContext)->refCount = 0; // important
 	(*pUserContext)->pageDir = base_pde; // important
 
-	for(i=0; i < USER_MAX_FILES; i++)
-		(*pUserContext)->fileList[i] = NULL;
+	memset((*pUserContext)->semaphores, NULL, USER_MAX_FILES);
+	memset((*pUserContext)->fileList, NULL, USER_MAX_FILES);
 
-	/* copy pwd from parent process */
+	/* Copy pwd from parent process */
 	memcpy(&(*pUserContext)->pwd, Get_Cwd(), sizeof(struct path)); /* weak */
 
-	// setup LDT
-	// alloc LDT seg desc in GDT
+	/* Setup LDT */
+	/* Alloc LDT seg desc in GDT */
 	desc = Allocate_Segment_Descriptor();
 	Init_LDT_Descriptor(
 					 desc,

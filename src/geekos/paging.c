@@ -96,10 +96,12 @@ static void Print_Fault_Info(uint_t address, faultcode_t faultCode)
     faultCode = *((faultcode_t *) &(state->errorCode));
 
     /* rest of your handling code here */
-	// Print ("Unexpected Page Fault received\n");
-    // Print_Fault_Info(address, faultCode);
-    //Dump_Interrupt_State(state);
-
+	#if 0
+	Print ("Unexpected Page Fault received\n");
+    Print_Fault_Info(address, faultCode);
+    Dump_Interrupt_State(state);
+	#endif
+	
     if(faultCode.protectionViolation == 0) // Non-present page
     {
     	pde_t* pde;

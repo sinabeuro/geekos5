@@ -74,9 +74,8 @@ struct User_Context {
      */
     int refCount;
 
-#if 0
-    int *semaphores;
-#endif
+    int semaphores[USER_MAX_FILES];
+	
 	struct File* fileList[USER_MAX_FILES]; 
 	
     /* Current directory */

@@ -42,6 +42,9 @@ struct Boot_Info;
  */
 #define HIGHMEM_START (ISA_HOLE_END + 8192)
 
+#define REST_OF_MEM_START HIGHMEM_START + KERNEL_HEAP_SIZE
+
+
 /*
  * Make the kernel heap this size
  */
