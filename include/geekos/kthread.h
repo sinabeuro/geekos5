@@ -68,6 +68,10 @@ struct Kernel_Thread {
     bool blocked;
 };
 
+struct sysinfo {
+	ulong_t totalram;  /* Total usable main memory size */
+	ulong_t freeram;   /* Available memory size */
+};
 /*
  * Define Thread_Queue and All_Thread_List access and manipulation functions.
  */

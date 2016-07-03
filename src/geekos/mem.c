@@ -128,8 +128,8 @@ void Init_Mem(struct Boot_Info* bootInfo)
     hugeMem = (numPageListBytes > ISA_HOLE_START -  Round_Up_To_Page((ulong_t) &end))? true : false;
 
 	if(hugeMem){
-    	//KASSERT(PAGE_ALLIGNED_ADDR(HIGHMEM_START + KERNEL_HEAP_SIZE) 
-    	//		== HIGHMEM_START + KERNEL_HEAP_SIZE);  // Must be page alined
+    	KASSERT(PAGE_ADDR(HIGHMEM_START + KERNEL_HEAP_SIZE) 
+    			== HIGHMEM_START + KERNEL_HEAP_SIZE);  // Must be page alined
 		pageListAddr = HIGHMEM_START + KERNEL_HEAP_SIZE;
 		kernEnd = Round_Up_To_Page((ulong_t) &end);
     }

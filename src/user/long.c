@@ -5,22 +5,29 @@
 int main(int argc, char **argv)
 {
   int i, j ;     	/* loop index */
+  int start_sem;
   int scr_sem;		/* id of screen semaphore */
   int now, start, elapsed; 		
 
   start = Get_Time_Of_Day();
+  start_sem = Create_Semaphore ("start" , 1);
   scr_sem = Create_Semaphore ("screen" , 1) ;   /* register for screen use */
 
-  for (i=0; i < 500; i++) {
+  P (start_sem) ;
+  V (start_sem) ;
+  
+  for (i=0; i < 200; i++) {
       for (j=0 ; j < 200000; j++) ;
-	  Set_Attr(ATTRIB(BLACK, MAGENTA|BRIGHT));
-	  Print("Long");
+	  //P (scr_sem) ;
+    Set_Attr(ATTRIB(BLACK, MAGENTA|BRIGHT));
+    Print("Long");
 	  Set_Attr(ATTRIB(BLACK, GRAY));
-      now = Get_Time_Of_Day();
+    //V(scr_sem);
+    now = Get_Time_Of_Day();
   }
   elapsed = Get_Time_Of_Day() - start;
   P (scr_sem) ;
-  Print("Process Long is done at time: %d\n", elapsed) ;
+  Print("\nProcess Long is done at time: %d\n", elapsed) ;
   V(scr_sem);
 
 

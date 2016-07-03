@@ -1,6 +1,6 @@
 # An example .bochsrc file.
 # You will need to edit these lines to reflect your system.
-cpu: count=1, ips=56500000, reset_on_triple_fault=1, ignore_bad_msrs=1
+#cpu: count=1, ips=56500000, reset_on_triple_fault=1, ignore_bad_msrs=1
 vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
 romimage: file=/usr/share/bochs/BIOS-bochs-latest
 

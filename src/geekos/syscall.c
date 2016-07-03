@@ -234,7 +234,7 @@ static int Sys_GetTimeOfDay(struct Interrupt_State* state)
 static int Sys_CreateSemaphore(struct Interrupt_State* state)
 {
 	char name[25];
-	Copy_From_User(name, state->ebx, state->ecx);
+	Copy_From_User(name, state->ebx, state->ecx+1);
 	return Create_Semaphore(name, state->edx);   
     //TODO("CreateSemaphore system call");
 }
@@ -333,7 +333,7 @@ done:
  */
 static int Sys_Open(struct Interrupt_State *state)
 {
-	char path[VFS_MAX_PATH_LEN];
+	char path[VFS_MAX_PATH_LEN] = {'\0', };
 	struct File **pFile;
 	int fd;
 	int rc;
@@ -373,7 +373,7 @@ static int Sys_Open(struct Interrupt_State *state)
  */
 static int Sys_OpenDirectory(struct Interrupt_State *state)
 {
-	char path[VFS_MAX_PATH_LEN];
+	char path[VFS_MAX_PATH_LEN] = {'\0' };
 	struct File **pDir; /* important */
 	int fd;
 	int rc;
@@ -393,6 +393,7 @@ static int Sys_OpenDirectory(struct Interrupt_State *state)
 
 	Copy_From_User(path, state->ebx, state->ecx);
     Enable_Interrupts();			
+    //Print("Sys_OpenDirectory : %s\n", path);
 	if((rc = Open_Directory(path, pDir)) < 0){ /* important */
 		fd = rc;
 	}
@@ -431,7 +432,7 @@ static int Sys_Close(struct Interrupt_State *state)
  */
 static int Sys_Delete(struct Interrupt_State *state)
 {
-	char path[VFS_MAX_PATH_LEN];
+	char path[VFS_MAX_PATH_LEN] = {'\0' };
 	int rc;
 
 	Copy_From_User(path, state->ebx, state->ecx);
@@ -493,7 +494,16 @@ static int Sys_ReadEntry(struct Interrupt_State *state)
  */
 static int Sys_Write(struct Interrupt_State *state)
 {
-    TODO("Write system call");
+	struct File *pFile;
+	int fd;
+	int rc;
+	struct File** fileList = g_currentThread->userContext->fileList;
+
+	fd = fileList[state->ebx];
+	rc = Write(fd, USER_BASE_ADRR + state->ecx, state->edx);
+	return rc;
+	
+    //TODO("Write system call");
 }
 
 /*
@@ -507,13 +517,14 @@ static int Sys_Write(struct Interrupt_State *state)
  */
 static int Sys_Stat(struct Interrupt_State *state)
 {
-	char path[VFS_MAX_PATH_LEN];
+	char path[VFS_MAX_PATH_LEN] = {'\0', };
+	int rc = 0;
 	Copy_From_User(path, state->ebx, state->ecx);
 	
     Enable_Interrupts();
-	Stat(path, (struct VFS_File_Stat *)(USER_BASE_ADRR + state->edx)); // weak
+	rc = Stat(path, (struct VFS_File_Stat *)(USER_BASE_ADRR + state->edx)); // weak
 	Disable_Interrupts();
-	return 0;
+	return rc;
     //TODO("Stat system call");
 }
 
@@ -553,7 +564,7 @@ static int Sys_Seek(struct Interrupt_State *state)
  */
 static int Sys_CreateDir(struct Interrupt_State *state)
 {
-	char path[VFS_MAX_PATH_LEN];
+	char path[VFS_MAX_PATH_LEN] = {'\0', };
 	int rc;
 
 	Copy_From_User(path, state->ebx, state->ecx);
@@ -588,8 +599,8 @@ static int Sys_Sync(struct Interrupt_State *state)
  */
 static int Sys_Format(struct Interrupt_State *state)
 {
-    char devname[BLOCKDEV_MAX_NAME_LEN];
-    char fstype[VFS_MAX_FS_NAME_LEN];
+    char devname[BLOCKDEV_MAX_NAME_LEN] = {'\0', };
+    char fstype[VFS_MAX_FS_NAME_LEN] = {'\0', };
     int rc = 0;
 
     if (!Copy_From_User(devname, state->ebx, state->ecx))
@@ -607,7 +618,7 @@ static int Sys_Format(struct Interrupt_State *state)
 
 static int Sys_GetCwd(struct Interrupt_State *state)
 {
-	char spath[VFS_MAX_PATH_LEN] = {0, };
+	char spath[VFS_MAX_PATH_LEN] = {'\0', };
 	int rc; 
 	
 	Enable_Interrupts();
@@ -619,7 +630,7 @@ static int Sys_GetCwd(struct Interrupt_State *state)
 
 static int Sys_ChangeDir(struct Interrupt_State *state)
 {
-	char spath[VFS_MAX_PATH_LEN];
+	char spath[VFS_MAX_PATH_LEN] = {'\0', };
 	struct VFS_File_Stat vfsFileStat;
 	struct path *path;
 	void* dentry;

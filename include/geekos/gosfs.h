@@ -42,6 +42,16 @@
 #define GOSFS_SUPER_BLOCK 0
 #define GOSFS_ROOT_DIR_BLOCK 1
 
+
+#define GET_FS_BUFFER(fscache, base, pBuf){		\
+	if(Get_FS_Buffer(fscache, base, pBuf) != 0) \
+	{											\
+		Print("Get_FS_Buffer Error.\n");		\
+		rc = EUNSPECIFIED;						\
+		goto fail;								\
+	}											\
+}
+
 typedef struct {
     int magic;			/* id to tell the type of filesystem */
     int rootDirectoryPointer;	

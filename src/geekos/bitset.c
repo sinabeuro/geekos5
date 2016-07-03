@@ -103,6 +103,27 @@ int Find_First_N_Free(void *bitSet, uint_t runLength, ulong_t totalBits)
     return -1;
 }
 
+int Get_Count_Of_ALL_Free_Bit(void *bitSet, ulong_t totalBits)
+{
+    uint_t numBytes = FIND_NUM_BYTES(totalBits);
+    ulong_t offset;
+    uchar_t *bits = (uchar_t*) bitSet;
+    uint_t count = 0;
+
+    for (offset = 0; offset < numBytes; ++offset) {
+		if (bits[offset] != 0xff) {
+		    uint_t bit;
+		    for (bit = 0; bit < 8; ++bit) {
+				if ((bits[offset] & (1 << bit)) == 0)
+				    count++;
+		    }
+		  
+		}
+    }
+
+    return count;
+}
+
 void Destroy_Bit_Set(void *bitSet)
 {
     Free(bitSet);

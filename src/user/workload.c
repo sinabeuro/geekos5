@@ -45,6 +45,7 @@ int main(int argc , char ** argv)
   int start;
   int elapsed;
   int quantum;
+  int start_sem;
   int scr_sem;			/* sid of screen semaphore */
   int id1, id2, id3;    	/* ID of child process */
 
@@ -65,8 +66,10 @@ int main(int argc , char ** argv)
   }
 
   start = Get_Time_Of_Day();
-  scr_sem = Create_Semaphore ("screen" , 1)  ;
+  start_sem = Create_Semaphore ("start" , 1);
+  scr_sem = Create_Semaphore ("screen" , 1);
 
+  P (start_sem) ;
   P (scr_sem) ;
   Print ("************* Start Workload Generator *********\n");
   V (scr_sem) ;
@@ -91,6 +94,7 @@ int main(int argc , char ** argv)
   Print ("Process Pong has been created with ID = %d\n",id3);
   V (scr_sem) ;
 
+  V (start_sem) ;
   Wait(id1);
   Wait(id2);
   Wait(id3);

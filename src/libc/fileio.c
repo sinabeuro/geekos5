@@ -54,7 +54,7 @@ DEF_SYSCALL(Delete,SYS_DELETE,int,(const char *path),
 static bool Copy_String(char *dst, const char *src, size_t len)
 {
     if (strnlen(src, len) == len)
-	return false;
+		return false;
     strcpy(dst, src);
     return true;
 }

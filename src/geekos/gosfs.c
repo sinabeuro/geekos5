@@ -89,6 +89,9 @@ static int GOSFS_Read(struct File *file, void *buf, ulong_t numBytes)
  */
 static int GOSFS_Write(struct File *file, void *buf, ulong_t numBytes)
 {
+	Print(" # GOSFS_Write : %d, %d\n", file->filePos,file->endPos);
+	Print(" # GOSFS_Write : %s\n", buf);
+	
     TODO("GeekOS filesystem write operation");
 }
 
@@ -158,13 +161,8 @@ static int GOSFS_Read_Entry(struct File *dir, struct VFS_Dir_Entry *entry)
 	dentry = Get_Entry_By_Ptr(instance, &dentryPtr);
 	blockNum = dentry->blockList[0];
 	//Release_FS_Buffer(fscache, pBuf);
-	
-	if(Get_FS_Buffer(fscache, blockNum, &pBuf) != 0)
-	{    	
-		Print("Get_FS_Buffer Error.\n");
-		rc = EUNSPECIFIED;
-		goto fail;
-	}
+
+	GET_FS_BUFFER(fscache, blockNum, &pBuf);
 	
 	while(dir->filePos < dir->endPos){
 		i = dir->filePos/sizeof(struct GOSFS_Dir_Entry);
@@ -182,11 +180,11 @@ static int GOSFS_Read_Entry(struct File *dir, struct VFS_Dir_Entry *entry)
 		goto fail; /* Reached the end of the directory. */
 	}
 	
-    /*
-     * Note: we don't need to bounds check here, because
-     * generic struct VFS_Dir_Entry objects have much more space for filenames
-     * than GOSFS directoryEntry objects.
-     */
+	/*
+	 * Note: we don't need to bounds check here, because
+	 * generic struct VFS_Dir_Entry objects have much more space for filenames
+	 * than GOSFS directoryEntry objects.
+	 */
     strncpy(entry->name, dentry->filename, sizeof(dentry->filename));
     entry->name[sizeof(dentry->filename)] = '\0';
 
@@ -197,7 +195,7 @@ static int GOSFS_Read_Entry(struct File *dir, struct VFS_Dir_Entry *entry)
 	stats->isSetuid = 0; /* weak */
 	
 	fail:
-	Release_FS_Buffer(fscache, pBuf);
+		Release_FS_Buffer(fscache, pBuf);
 	return rc;
 	
 	//TODO("GeekOS filesystem Read_Entry operation");
@@ -245,7 +243,7 @@ static int Do_GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 		KASSERT(base != 0);
 		if(Get_FS_Buffer(fscache, base, &pBuf) != 0)
 		{		
-			Print("Get_FS_Buffer Error.\n");
+			Debug("Get_FS_Buffer Error.\n");
 			return EUNSPECIFIED;
 		}
 		
@@ -260,7 +258,7 @@ static int Do_GOSFS_Lookup(GOSFS_Instance *instance, Path_Info* pathInfo)
 	    	entry = &dir[i];
 			if (strcmp(entry->filename, prefix) == 0 &&
 				((entry->flags == GOSFS_DIRENTRY_USED && strcmp(suffix, "/") == 0) ||
-				 entry->flags == GOSFS_DIRENTRY_ISDIRECTORY)){
+				 entry->flags == GOSFS_DIRENTRY_ISDIRECTORY)){ // If reach to term
 				Debug("entry offset : %d\n", i);
 				break;
 			}
@@ -404,14 +402,9 @@ static int GOSFS_Open(struct Mount_Point *mountPoint, const char *path, int mode
 			rc = ENOTFOUND;
 			goto fail;
 		}
-		else
+		else /* Valid path but there is no file */
 		{	
-			if(Get_FS_Buffer(fscache, pathInfo.dirEntryPtr.base, &pBuf) != 0)
-		    {    	
-				Print("Get_FS_Buffer Error.\n");
-		    	rc = EUNSPECIFIED;
-		    	goto fail;
-		    }
+			GET_FS_BUFFER(fscache, pathInfo.dirEntryPtr.base, &pBuf);
 		    entry = &((struct GOSFS_Dir_Entry*)pBuf->data)[pathInfo.dirEntryPtr.offset];
 
 		    /* There is no file, so create file */
@@ -419,16 +412,16 @@ static int GOSFS_Open(struct Mount_Point *mountPoint, const char *path, int mode
 		   		Debug("EACCESS\n");
 		   		Debug("filename : %s\n", pathInfo.suffix);
 		   		strcpy(entry->filename, pathInfo.suffix);
-				entry->size = 0; /* not reasonable.. */
+				entry->size = 0; /* Weak : not reasonable.. */
 				entry->flags = GOSFS_DIRENTRY_USED;
 
 				Super_Block* superBlock = (Super_Block*)instance->fsinfo->data;
-				int freeBit = Find_First_Free_Bit(superBlock->bitmap, GOSFS_FS_BLOCK_SIZE - 12);
+				int freeBit = Find_First_Free_Bit(superBlock->bitmap, superBlock->size);
 				Debug("freeBit : %d\n", freeBit);
 				entry->blockList[0] = freeBit;
 				Set_Bit(superBlock->bitmap, freeBit);
 
-				Modify_FS_Buffer(fscache, pBuf); // need to wrapper
+				Modify_FS_Buffer(fscache, pBuf);
 				Modify_FS_Buffer(fscache, instance->fsinfo); // Superblock
 				Sync_FS_Buffer_Cache(fscache);
 				// need alloc data block
@@ -437,13 +430,7 @@ static int GOSFS_Open(struct Mount_Point *mountPoint, const char *path, int mode
 	}
 	else{
 		Debug("FOUND\n");
-		if(Get_FS_Buffer(fscache, pathInfo.dirEntryPtr.base, &pBuf) != 0)
-	    {    	
-			Print("Get_FS_Buffer Error.\n");
-			rc = EUNSPECIFIED;
-			goto fail;
-
-	    }
+		GET_FS_BUFFER(fscache, pathInfo.dirEntryPtr.base, &pBuf);
 	    entry = &((struct GOSFS_Dir_Entry*)pBuf->data)[pathInfo.dirEntryPtr.offset];
 	    int flags = entry->flags;
 
@@ -523,9 +510,10 @@ static int GOSFS_Create_Directory(struct Mount_Point *mountPoint, const char *pa
 			entry->flags = GOSFS_DIRENTRY_ISDIRECTORY;
 
 			Super_Block* superBlock = (Super_Block*)instance->fsinfo->data;
-			int freeBit = Find_First_Free_Bit(superBlock->bitmap, GOSFS_FS_BLOCK_SIZE - 12);
+			int freeBit = Find_First_Free_Bit(superBlock->bitmap, superBlock->size);
 			Debug("freeBit : %d\n", freeBit);
 			entry->blockList[0] = freeBit;
+			entry->acl->permission = O_READ | O_WRITE;
 			Set_Bit(superBlock->bitmap, freeBit);
 
 			Modify_FS_Buffer(fscache, pBuf); // need to wrapper
@@ -549,7 +537,6 @@ static int GOSFS_Create_Directory(struct Mount_Point *mountPoint, const char *pa
 			entry[1].flags = GOSFS_DIRENTRY_ISDIRECTORY;
 			entry[1].blockList[0] = pathInfo.dirEntryPtr.base;
 			entry[1].size = 1*GOSFS_FS_BLOCK_SIZE;
-
 			Modify_FS_Buffer(fscache, pBuf); // need to wrapper
 			Sync_FS_Buffer_Cache(fscache);
 			Release_FS_Buffer(fscache, pBuf);
@@ -658,11 +645,7 @@ static int GOSFS_Delete(struct Mount_Point *mountPoint, const char *path)
 	else{
 		Debug("FOUND\n");		
 
-		if(Get_FS_Buffer(fscache, pathInfo.dirEntryPtr.base, &pBuf) != 0)
-	    {    	
-			Print("Get_FS_Buffer Error.\n");
-	    	return -1;
-	    }
+	    GET_FS_BUFFER(fscache, pathInfo.dirEntryPtr.base, &pBuf)
 	    
 	    entry = &((struct GOSFS_Dir_Entry*)pBuf->data)[pathInfo.dirEntryPtr.offset];
 		Debug("flags : %d\n", entry->flags);
@@ -713,6 +696,8 @@ static int GOSFS_Delete(struct Mount_Point *mountPoint, const char *path)
 
 
 	}
+
+	fail:
 	
 	done:
 		return rc;
@@ -902,12 +887,12 @@ static int GOSFS_Format(struct Block_Device *blockDev)
 	//(struct GOSFS_Dir_Entry*) Malloc(sizeof(struct GOSFS_Dir_Entry*));
 
 	/* Make Superblock */
-	memset(super_block->bitmap, 0, sizeof(super_block->bitmap));
-	Set_Bit((void*)super_block->bitmap, GOSFS_SUPER_BLOCK); // superblock
-	Set_Bit((void*)super_block->bitmap, GOSFS_ROOT_DIR_BLOCK); // root dir
 	super_block->size = Get_Num_Blocks(blockDev)/GOSFS_SECTORS_PER_FS_BLOCK;
 	super_block->rootDirectoryPointer = GOSFS_ROOT_DIR_BLOCK;
-	super_block->magic = GOSFS_MAGIC;	
+	super_block->magic = GOSFS_MAGIC;
+	memset(super_block->bitmap, 0, sizeof(super_block->bitmap)); // weak
+	Set_Bit((void*)super_block->bitmap, GOSFS_SUPER_BLOCK); // superblock
+	Set_Bit((void*)super_block->bitmap, GOSFS_ROOT_DIR_BLOCK); // root dir
 
 	blockNum = GOSFS_SUPER_BLOCK * GOSFS_SECTORS_PER_FS_BLOCK;
 	for (offset = 0; offset < GOSFS_FS_BLOCK_SIZE; offset += SECTOR_SIZE) {
@@ -917,11 +902,14 @@ static int GOSFS_Format(struct Block_Device *blockDev)
 		++blockNum;
     }
     
-	/* Make Root diretory entry */
+	/* Make Root diretory entry 
+	 * Need to add acl
+	 */ 
 	strcpy(root_dir_entry[0].filename, ".");
 	root_dir_entry[0].flags = GOSFS_DIRENTRY_ISDIRECTORY;
 	root_dir_entry[0].blockList[0] = GOSFS_ROOT_DIR_BLOCK;
 	root_dir_entry[0].size = 1*GOSFS_FS_BLOCK_SIZE;
+	
 	strcpy(root_dir_entry[1].filename, "..");
 	root_dir_entry[1].flags = GOSFS_DIRENTRY_ISDIRECTORY;
 	root_dir_entry[1].blockList[0] = GOSFS_ROOT_DIR_BLOCK;
@@ -997,11 +985,27 @@ static int GOSFS_Mount(struct Mount_Point *mountPoint)
 	Get_FS_Buffer(instance->fscache, 1, &pBuf);
 	struct GOSFS_Dir_Entry* entry = 0;
 
+	Print("%-15s %-7s %-7s %-7s %-7s %-s\n", 
+			"Filesystem",
+			"Size",
+			"Used",
+			"Avail",
+			"Use\%",
+			"Mounted on"
+			);
+			
+	#define CEILING_POS(X) ((X-(int)(X)) > 0 ? (int)(X+1) : (int)(X))			
+
+	Print("%-15s %-7d %-7d %-7d %-7d %-s\n", 
+			"gosfs",
+			superBlock->size*4,
+			superBlock->size*4-Get_Count_Of_ALL_Free_Bit(superBlock->bitmap, superBlock->size)*4,
+			Get_Count_Of_ALL_Free_Bit(superBlock->bitmap, superBlock->size)*4,
+			CEILING_POS((float)(superBlock->size*4-Get_Count_Of_ALL_Free_Bit(superBlock->bitmap, superBlock->size)*4)/superBlock->size*4),
+			mountPoint->pathPrefix
+			);			
+			
 	entry = (struct GOSFS_Dir_Entry*)(pBuf->data);
-			Print("blkNum : %d\n", pBuf->fsBlockNum);
-			Print("size0 : %d\n", (&entry[0])->size);
-			Print("entry0 : %s\n", (&entry[0])->filename);
-			Print("entry1 : %s\n", (&entry[1])->filename);
 
 	Release_FS_Buffer(instance->fscache, pBuf);
     return 0;

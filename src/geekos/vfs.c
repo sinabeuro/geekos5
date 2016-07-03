@@ -69,7 +69,6 @@ int Convert_To_Abs_Path(char *path)
 	strcat(path, "/");
 	strcat(path, temp);
 	Free(temp);
-	Debug("Convert_To_Abs_Path : %s\n", path);
 }
 
 /*

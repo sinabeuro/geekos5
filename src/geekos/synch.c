@@ -35,13 +35,13 @@ int Create_Semaphore(char* name, int ival)
 	static ulong_t sid = 1;
 	int i;
 	int* userSemaphoreList;
-	
 	//find sem by sname
 	while (sema != 0)
 	{
 		if (strcmp(sema->name, name) == 0)
 		{
 			//Print("exist sema->name: %s, %d\n", sema->name, sema->sid);
+			sema->refCount++;
 			return sema->sid;
 		}
 		sema = Get_Next_In_Semaphore_List(sema);
@@ -50,7 +50,7 @@ int Create_Semaphore(char* name, int ival)
 	/* If there is no sem, then create sem */
 	sema = (struct Semaphore*)Malloc(sizeof(struct Semaphore));
 	sema->sid = sid++;
-	memcpy(sema->name, name, 25);
+	strcpy(sema->name, name);
 	sema->count = ival;
 	sema->refCount++;
 	Mutex_Init(&(sema->mutex));
@@ -158,7 +158,7 @@ int V(int sid)
 			
 			Enable_Interrupts();
 			Mutex_Lock(mutex);
-			sema->count = sema->count + 1;
+			sema->count++;
 			//Print("wait queue : %d", cond->waitQueue);
 			Cond_Broadcast(cond);
 			Mutex_Unlock(mutex);
