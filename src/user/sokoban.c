@@ -1,3 +1,12 @@
+/*
+ * Sokoban solver - 
+ * Copyright (c) 2010 Rosetta Code (c)
+ * Ported for GeekOS by Beom-jin Kim <riddler117@gmail.com>
+ * $Revision: 0.1 $
+ *
+ * https://rosettacode.org/wiki/Sokoban
+ */
+
 #include <conio.h>
 #include <libuser.h>
  

@@ -113,6 +113,8 @@ void Init_Mem(struct Boot_Info* bootInfo)
 
     KASSERT(bootInfo->memSizeKB > 0);
 
+    Print("Initializing memory...\n");
+
     /*
      * Before we do anything, switch from setup.asm's temporary GDT
      * to the kernel's permanent GDT.

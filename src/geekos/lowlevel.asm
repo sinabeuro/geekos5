@@ -1,7 +1,7 @@
 ; Low level interrupt/thread handling code for GeekOS.
 ; Copyright (c) 2001,2003,2004 David H. Hovemeyer <daveho@cs.umd.edu>
 ; Copyright (c) 2003, Jeffrey K. Hollingsworth <hollings@cs.umd.edu>
-; $Revision: 1.15 $
+; $Revision: 1.18 $
 
 ; This is free software.  You are permitted to use,
 ; redistribute, and modify it as specified in the file "COPYING".
@@ -70,6 +70,32 @@ INTERRUPT_STATE_SIZE equ 64
 	add     esp, 8                  ; clear 2 arguments
 %endmacro
 
+; Code to rearrange the stack to activate a signal handler
+%macro Process_Signal 1
+	; Check if a signal is pending.  If so, we need to
+	; rearrange the stack so that when the thread restarts
+	; it will enter the signal handler and then afterward
+	; return to its original spot
+	push	esp
+	push	dword [g_currentThread]
+	call	Check_Pending_Signal
+	add	esp, 8
+	cmp	eax, dword 0	
+	je	%1
+	; We have a pending signal, so we must arrange to
+	; call its signal handler
+; 	push	esp
+; 	call	Print_IS
+; 	add	esp, 4
+ 	push	esp
+ 	push	dword [g_currentThread]
+ 	call	Setup_Frame
+ 	add	esp, 8
+; 	push	esp
+; 	call	Print_IS
+; 	add	esp, 4
+%endmacro
+	
 ; Number of bytes between the top of the stack and
 ; the interrupt number after the general-purpose and segment
 ; registers have been saved.
@@ -123,6 +149,12 @@ IMPORT Make_Runnable
 ; Function to activate a new user context (if needed).
 IMPORT Switch_To_User_Context
 
+; Function that checks if the current thread has a signal pending.
+IMPORT Check_Pending_Signal
+
+; Function that sets up the stack frame to invoke a signal handler
+IMPORT Setup_Frame
+
 ; Sizes of interrupt handler entry points for interrupts with
 ; and without error codes.  The code in idt.c uses this
 ; information to infer the layout of the table of interrupt
@@ -146,12 +178,10 @@ EXPORT Switch_To_Thread
 ; Return current value of eflags register.
 EXPORT Get_Current_EFLAGS
 
-; Virtual memory support.
 EXPORT Enable_Paging
 EXPORT Set_PDBR
 EXPORT Get_PDBR
 EXPORT Flush_TLB
-
 
 ; ----------------------------------------------------------------------
 ; Code
@@ -191,7 +221,6 @@ Load_LDTR:
 	mov	eax, [esp+4]
 	lldt	ax
 	ret
-
 ;
 ; Start paging
 ;	load crt3 with the passed page directory pointer
@@ -235,7 +264,6 @@ Flush_TLB:
 	mov	eax, cr3
 	mov	cr3, eax
 	ret
-
 
 ; Common interrupt handling code.
 ; Save registers, call C handler function,
@@ -293,6 +321,9 @@ Handle_Interrupt:
 	mov	[g_needReschedule], dword 0
 
 .restore:
+	Process_Signal .finish
+	
+.finish:	
 	; Activate the user context, if necessary.
 	Activate_User_Context
 
@@ -363,6 +394,9 @@ Switch_To_Thread:
 	mov	[g_currentThread], eax
 	mov	esp, [eax+0]
 
+	Process_Signal .complete
+	
+.complete:	
 	; Activate the user context, if necessary.
 	Activate_User_Context
 

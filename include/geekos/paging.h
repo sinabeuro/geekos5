@@ -42,7 +42,7 @@ struct User_Context;
 
 #define DEFAULT_USER_STACK_SIZE 4096
 #define END_OF_VM UINT_MAX
-#define USER_BASE_ADRR (END_OF_VM>>1)+1
+#define USER_BASE_ADDR (END_OF_VM>>1)+1
 
 // Block(or Sector) structure
 typedef struct {

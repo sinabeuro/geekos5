@@ -100,7 +100,7 @@ void Destroy_User_Context(struct User_Context* context)
 	pte_t* pte;
 
 	/* Remove page table */
-	for(i = PAGE_DIRECTORY_INDEX(USER_BASE_ADRR); i < NUM_PAGE_DIR_ENTRIES; ++i)
+	for(i = PAGE_DIRECTORY_INDEX(USER_BASE_ADDR); i < NUM_PAGE_DIR_ENTRIES; ++i)
 	{
 		if(pde[i].pageTableBaseAddr == '\0')
 			continue;
@@ -210,7 +210,7 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 	/* Alloc user page dir entry(start from 0x80000000) */
 	for(i=0; i < exeFormat->numSegments; ++i){
 		struct Exe_Segment *segment = &exeFormat->segmentList[i];
-		ulong_t startAddress = USER_BASE_ADRR + segment->startAddress;
+		ulong_t startAddress = USER_BASE_ADDR + segment->startAddress;
 		ulong_t offsetInFile = segment->offsetInFile;	
 		Debug("\nSegment %d : %d\n", i, segment->lengthInFile);
 		Debug( "%6s %-12s%-15s%-15s\n",
@@ -269,7 +269,7 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 		}
 	}
 
-	/* Alloc stack.. */
+	/* Alloc userspace stack.. */
 	j = PAGE_DIRECTORY_INDEX(stackPointerAddr);
 	pde = &base_pde[j];
 	pte = (pte_t*)Alloc_Page();
@@ -289,7 +289,7 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 		//Print("stack VA : %x\n", vaddr);
 	}
 
-	stackPointerAddr -= USER_BASE_ADRR; // This means virtual(logical) addr
+	stackPointerAddr -= USER_BASE_ADDR; // This means virtual(logical) addr
 	Format_Argument_Block(	paddr, numArgs, 
 							stackPointerAddr, command); 
 
@@ -323,8 +323,8 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 	desc = &((*pUserContext)->ldt)[0];
 	Init_Code_Segment_Descriptor(
 					 desc,
-					 (unsigned long)USER_BASE_ADRR, // base address
-					 (USER_BASE_ADRR/PAGE_SIZE),  // need to modify
+					 (unsigned long)USER_BASE_ADDR, // base address
+					 (USER_BASE_ADDR/PAGE_SIZE),  // need to modify
 					 USER_PRIVILEGE		   // privilege level (0 == kernel)
 					 );
 	codeSelector = Selector(USER_PRIVILEGE, false, 0);
@@ -333,8 +333,8 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 	desc = &((*pUserContext)->ldt)[1];
 	Init_Data_Segment_Descriptor(
 					 desc,
-					 (unsigned long)USER_BASE_ADRR, // base address
-					 (USER_BASE_ADRR/PAGE_SIZE),  // num pages
+					 (unsigned long)USER_BASE_ADDR, // base address
+					 (USER_BASE_ADDR/PAGE_SIZE),  // num pages
 					 USER_PRIVILEGE		   // privilege level (0 == kernel)
 					 );
 	dataSelector = Selector(USER_PRIVILEGE, false, 1);
@@ -371,12 +371,12 @@ bool Copy_From_User(void* destInKernel, ulong_t srcInUser, ulong_t numBytes)
      * the page is guaranteed not to be stolen.
      */
     //Print("Source address : %x\n", srcInUser); 
-    //KASSERT(PAGE_ADDR(USER_BASE_ADRR + srcInUser))
+    //KASSERT(PAGE_ADDR(USER_BASE_ADDR + srcInUser))
     struct User_Context* userContext = g_currentThread->userContext;
-	//struct Page* page = Get_Page(USER_BASE_ADRR + srcInUser);
+	//struct Page* page = Get_Page(USER_BASE_ADDR + srcInUser);
 
 	KASSERT(!Interrupts_Enabled());
-    memcpy(destInKernel, (void*)(USER_BASE_ADRR + srcInUser), numBytes); // because kernel mode
+    memcpy(destInKernel, (void*)(USER_BASE_ADDR + srcInUser), numBytes); // because kernel mode
 
     return true;    
     //TODO("Copy user data to kernel buffer");
@@ -388,7 +388,7 @@ bool Copy_String_From_User(void* destInKernel, ulong_t srcInUser)
   	struct User_Context* userContext = g_currentThread->userContext;
   	
 	KASSERT(!Interrupts_Enabled());
-    strcpy(destInKernel, (void*)(USER_BASE_ADRR + srcInUser)); // because kernel mode
+    strcpy(destInKernel, (void*)(USER_BASE_ADDR + srcInUser)); // because kernel mode
 
     return true;
 }
@@ -408,8 +408,8 @@ bool Copy_To_User(ulong_t destInUser, void* srcInKernel, ulong_t numBytes)
      */
 	struct User_Context* userContext = g_currentThread->userContext;
 	
-	memcpy((void*)(USER_BASE_ADRR + destInUser), srcInKernel, numBytes);
-	//Print("%x, %x\n", (USER_BASE_ADRR + destInUser), srcInKernel);
+	memcpy((void*)(USER_BASE_ADDR + destInUser), srcInKernel, numBytes);
+	//Print("%x, %x\n", (USER_BASE_ADDR + destInUser), srcInKernel);
 	return true;
      
     //TODO("Copy kernel data to user buffer");

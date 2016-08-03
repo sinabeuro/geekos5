@@ -84,13 +84,58 @@ static int GOSFS_Read(struct File *file, void *buf, ulong_t numBytes)
     TODO("GeekOS filesystem read operation");
 }
 
+static ulong_t Do_Get_Block()
+{
+
+}
+
+static ulong_t Get_Block_Pos(ulong_t offset)
+{
+#if 0
+    if(offset < 32*1024){
+    	;
+    }
+    else {
+    	return EUNSPECIFIED;
+	}
+	
+    return Do_Get_Block(pos, vroot, 1, 0);
+#endif
+}
+
 /*
  * Write data to current position in file.
  */
 static int GOSFS_Write(struct File *file, void *buf, ulong_t numBytes)
 {
-	Print(" # GOSFS_Write : %d, %d\n", file->filePos,file->endPos);
+    struct GOSFS_File *gosfsFile = (struct GOSFS_File*) file->fsData;
+    struct GOSFS_Instance *instance = (struct GOSFS_Instance*) file->mountPoint->fsData;
+    ulong_t start = file->filePos;
+    ulong_t end = file->filePos + numBytes;
+    ulong_t startBlock, endBlock, curBlock;
+    ulong_t i;
+
+	/* Special case: can't handle writes longer than INT_MAX */
+    if (numBytes > INT_MAX)
+		return EINVALID;
+    
+    /*
+     * Now the complicated part; ensure that all blocks containing the
+     * data we need are in the file data cache.
+     */
+    startBlock = Round_Down_To_Block(start);
+    endBlock = Round_Up_To_Block(end) / SECTOR_SIZE;
+	
+    Print(" # GOSFS_Write : %d, %d\n", file->filePos, file->endPos);
 	Print(" # GOSFS_Write : %s\n", buf);
+
+	for (int offset = startBlock; offset < end; offset += SECTOR_SIZE) {
+	
+		//int rc = Block_Write(blockDev, blockNum, (char*)super_block + offset);
+		//if (rc != 0)
+		//    return rc;
+		//++blockNum;
+    }	
 	
     TODO("GeekOS filesystem write operation");
 }
@@ -1037,4 +1082,3 @@ void Init_GOSFS(void)
 {
     Register_Filesystem("gosfs", &s_gosfsFilesystemOps);
 }
-

@@ -64,7 +64,6 @@ int g_Quantum = DEFAULT_MAX_TICKS;
 /* ----------------------------------------------------------------------
  * Private functions
  * ---------------------------------------------------------------------- */
-
 static void Timer_Interrupt_Handler(struct Interrupt_State* state)
 {
     int i;
@@ -78,11 +77,20 @@ static void Timer_Interrupt_Handler(struct Interrupt_State* state)
 
     /* update timer events */
     for (i=0; i < timeEventCount; i++) {
-	if (pendingTimerEvents[i].ticks == 0) {
-		    if (timerDebug) Print("timer: event %d expired (%d ticks)\n", 
-		        pendingTimerEvents[i].id, pendingTimerEvents[i].origTicks);
-		    (pendingTimerEvents[i].callBack)(pendingTimerEvents[i].id);
-		} else {
+    	//Print("timer: %d\n", pendingTimerEvents[i].ticks); 
+    	if(pendingTimerEvents[i].id < 0)
+    		continue;
+    		
+		if (pendingTimerEvents[i].ticks <= 0) {
+			if (timerDebug) Print("timer: event %d expired (%d ticks)\n", 
+			        pendingTimerEvents[i].id, pendingTimerEvents[i].origTicks);
+
+			if(pendingTimerEvents[i].callBack){
+				//(pendingTimerEvents[i].callBack)(pendingTimerEvents[i].id);
+				pendingTimerEvents[i].id = -1;
+			}
+		} 
+		else {
 		    pendingTimerEvents[i].ticks--;
 		}
     }
@@ -226,16 +234,18 @@ int Start_Timer(int ticks, timerCallback cb)
     KASSERT(!Interrupts_Enabled());
 
     if (timeEventCount == MAX_TIMER_EVENTS) {
-	return -1;
-    } else {
-	ret = nextEventID++;
-	pendingTimerEvents[timeEventCount].id = ret;
-	pendingTimerEvents[timeEventCount].callBack = cb;
-	pendingTimerEvents[timeEventCount].ticks = ticks;
-	pendingTimerEvents[timeEventCount].origTicks = ticks;
-	timeEventCount++;
+		return -1;
+    } 
+    else {
+		ret = nextEventID++;
+		pendingTimerEvents[timeEventCount].id = ret;
+		pendingTimerEvents[timeEventCount].callBack = cb;
+		pendingTimerEvents[timeEventCount].ticks = ticks;
+		pendingTimerEvents[timeEventCount].origTicks = ticks;
+		pendingTimerEvents[timeEventCount].pid = g_currentThread->pid;
+		timeEventCount++;
 
-	return ret;
+		return ret;
     }
 }
 

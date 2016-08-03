@@ -20,6 +20,9 @@ int Get_PID(void);
 int getcwd(char* buf, int size);
 int chdir(const char* dirname);
 void usleep(int us);
+void alarm(int ms, int* cb);
+int PS(struct Process_Info *ptable, int len);
+int WaitNoPID(int *status);
 
 
 #endif  /* PROCESS_H */

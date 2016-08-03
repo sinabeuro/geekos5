@@ -30,3 +30,5 @@ char *strcat(char *s1, char *s2);
 char *strdup(char *s1);
 char *strcpy(char *s1, char *s2);
 
+int 	rand();
+void 	srand(uint_t seed);

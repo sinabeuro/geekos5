@@ -475,7 +475,7 @@ static int Sys_ReadEntry(struct Interrupt_State *state)
 
 	Enable_Interrupts();
 	//Print("%d, fileList[state->ebx] : %x\n", state->ebx, fileList[state->ebx]);
-	rc = Read_Entry(fileList[state->ebx], (struct VFS_File_Stat *)(USER_BASE_ADRR + state->ecx)); // weak
+	rc = Read_Entry(fileList[state->ebx], (struct VFS_File_Stat *)(USER_BASE_ADDR + state->ecx)); // weak
 	Disable_Interrupts();
 	return rc;
 
@@ -500,7 +500,7 @@ static int Sys_Write(struct Interrupt_State *state)
 	struct File** fileList = g_currentThread->userContext->fileList;
 
 	fd = fileList[state->ebx];
-	rc = Write(fd, USER_BASE_ADRR + state->ecx, state->edx);
+	rc = Write(fd, USER_BASE_ADDR + state->ecx, state->edx);
 	return rc;
 	
     //TODO("Write system call");
@@ -522,7 +522,7 @@ static int Sys_Stat(struct Interrupt_State *state)
 	Copy_From_User(path, state->ebx, state->ecx);
 	
     Enable_Interrupts();
-	rc = Stat(path, (struct VFS_File_Stat *)(USER_BASE_ADRR + state->edx)); // weak
+	rc = Stat(path, (struct VFS_File_Stat *)(USER_BASE_ADDR + state->edx)); // weak
 	Disable_Interrupts();
 	return rc;
     //TODO("Stat system call");
@@ -657,12 +657,95 @@ static void Sys_Usleep(struct Interrupt_State *state)
 	//Start_Timer(state->ebx, NULL);
 }
 
+static void Sys_Alarm(struct Interrupt_State *state)
+{
+	Print("in systemcall! : %x\n", USER_BASE_ADDR+state->ecx);
+	Start_Timer(state->ebx, USER_BASE_ADDR+state->ecx);
+}
 
 static void Sys_SysInfo(struct Interrupt_State *state)
 {
 
 }
 
+
+/*
+ * Get information about the running processes
+ * Params:
+ *   state->ebx - pointer to user memory containing an array of
+ *   Process_Info structs
+ *   state->ecx - length of the passed in array in memory
+ * Returns: -1 on failure
+ *          0 if size of user memory too small
+ *          N the number of entries in the table, on success
+ */
+static int Sys_PS(struct Interrupt_State* state)
+{
+    TODO("Sys_PS system call");
+}
+
+
+/*
+ * Send a signal to a process 
+ * Params:
+ *   state->ebx - pid of process to send signal to
+ *   state->ecx - signal number
+ * Returns: 0 on success or error code (< 0) on error
+ */
+static int Sys_Kill(struct Interrupt_State* state)
+{
+    TODO("Sys_Kill system call");
+}
+
+/*
+ * Register a signal handler for a process
+ * Params:
+ *   state->ebx - pointer to handler function
+ *   state->ecx - signal number
+ * Returns: 0 on success or error code (< 0) on error
+ */
+static int Sys_Signal(struct Interrupt_State* state)
+{
+    TODO("Sys_Signal system call");
+}
+
+/*
+ * Register the Return_Signal trampoline for this process.
+ * Signals cannot be delivered until this is registered.
+ * Params:
+ *   state->ebx - pointer to Return_Signal function
+ *   state->ecx - pointer to the default handler
+ *   state->edx - pointer to the ignore handler
+ *
+ * Returns: 0 on success or error code (< 0) on error
+ */
+static int Sys_RegDeliver(struct Interrupt_State* state)
+{
+    TODO("Sys_RegDeliver system call");
+}
+
+/*
+ * Complete signal handling for this process.
+ * Params:
+ *   none
+ *
+ * Returns: 0 on success or error code (< 0) on error
+ */
+static int Sys_ReturnSignal(struct Interrupt_State* state)
+{
+    TODO("Sys_ReturnSignal system call");
+}
+
+/*
+ * Reap a child process that has died
+ * Params:
+ *   state->ebx - pointer to status of process reaped
+ * Returns: pid of reaped process on success, -1 on error.
+ */
+static int Sys_WaitNoPID(struct Interrupt_State* state)
+{
+    TODO("Sys_WaitNoPID system call");
+}
 
 /*
  * Global table of system call handler functions.
@@ -704,6 +787,13 @@ const Syscall g_syscallTable[] = {
     Sys_GetCwd,
     Sys_ChangeDir,
     Sys_Usleep,
+    Sys_Alarm,
+    Sys_Kill,
+    Sys_PS,
+    Sys_Signal,
+    Sys_RegDeliver,
+    Sys_ReturnSignal,
+    Sys_WaitNoPID,
 };
 
 /*

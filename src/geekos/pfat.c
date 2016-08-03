@@ -139,39 +139,39 @@ static int PFAT_Read(struct File *file, void *buf, ulong_t numBytes)
      */
     curBlock = pfatFile->entry->firstBlock;
     for (i = 0; i < endBlock; ++i) {
-	/* Are we at a valid block? */
-	if (curBlock == FAT_ENTRY_FREE || curBlock == FAT_ENTRY_EOF) {
-	    Print("Unexpected end of file in FAT at file block %lu\n", i);
-	    return EIO;  /* probable filesystem corruption */
-	}
+		/* Are we at a valid block? */
+		if (curBlock == FAT_ENTRY_FREE || curBlock == FAT_ENTRY_EOF) {
+		    Print("Unexpected end of file in FAT at file block %lu\n", i);
+		    return EIO;  /* probable filesystem corruption */
+		}
 
-	/* Do we need to read this block? */
-	if (i >= startBlock) {
-	    int rc = 0;
+		/* Do we need to read this block? */
+		if (i >= startBlock) {
+		    int rc = 0;
 
-	    /* Only allow one thread at a time to read this block. */
-	    Mutex_Lock(&pfatFile->lock);
+		    /* Only allow one thread at a time to read this block. */
+		    Mutex_Lock(&pfatFile->lock);
 
-	    if (!Is_Bit_Set(pfatFile->validBlockSet, i)) {
-		/* Read block into the file data cache */
-		Debug("Reading file block %lu (device block %lu)\n", i, curBlock);
-		rc = Block_Read(file->mountPoint->dev, curBlock, pfatFile->fileDataCache + i*SECTOR_SIZE);
+		    if (!Is_Bit_Set(pfatFile->validBlockSet, i)) {
+				/* Read block into the file data cache */
+				Debug("Reading file block %lu (device block %lu)\n", i, curBlock);
+				rc = Block_Read(file->mountPoint->dev, curBlock, pfatFile->fileDataCache + i*SECTOR_SIZE);
 
-		if (rc == 0)
-		    /* Mark as having read this block */
-		    Set_Bit(pfatFile->validBlockSet, i);
-	    }
+				if (rc == 0)
+				    /* Mark as having read this block */
+				    Set_Bit(pfatFile->validBlockSet, i);
+		    }
 
-	    /* Done attempting to fetch the block */
-	    Mutex_Unlock(&pfatFile->lock);
+		    /* Done attempting to fetch the block */
+		    Mutex_Unlock(&pfatFile->lock);
 
-	    if (rc != 0)
-		return rc;
-	}
+		    if (rc != 0)
+				return rc;
+		}
 
-	/* Continue to next block */
-	ulong_t nextBlock = instance->fat[curBlock];
-	curBlock = nextBlock;
+		/* Continue to next block */
+		ulong_t nextBlock = instance->fat[curBlock];
+		curBlock = nextBlock;
     }
 
     /*

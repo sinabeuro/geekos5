@@ -23,9 +23,10 @@ void Micro_Delay(int us);
 
 typedef struct {
     int ticks;				 /* timer code decrements this */
-    int id;				 /* unqiue id for this timer even */
+    int id;					 /* unqiue id for this timer even */
     timerCallback callBack;		 /* Queue to wakeup on timer expire */
     int origTicks;
+    int pid;
 } timerEvent;
 
 int Start_Timer(int ticks, timerCallback);

@@ -70,6 +70,13 @@ enum {
     SYS_GETCWD,
     SYS_CHDIR,
     SYS_USLEEP,
+    SYS_ALARM,
+    SYS_KILL,		 /* Kill a process */
+    SYS_PS,		 /* Get the current process table */
+    SYS_SIGNAL,		 /* Register a signal handler for a signal */
+    SYS_REGDELIVER,	 /* Register user-space handler routines */
+    SYS_RETURNSIG,	 /* Called when signal handler is done executing */
+    SYS_WAITNOPID,	 /* Like Wait, but doesn't require a PID. */
 };
 
 /*

@@ -32,6 +32,7 @@ NON_ELF_SYSTEM     := yes
 EXTRA_CC_USER_OPTS := -Dmain=geekos_main
 endif
 
+SUB_DIRS = $(PROJECT_ROOT)/test
 # ----------------------------------------------------------------------
 # Configuration -
 #   Various options specifying how GeekOS should be built,
@@ -61,6 +62,7 @@ KERNEL_C_SRCS := idt.c int.c trap.c irq.c io.c \
 	vfs.c pfat.c bitset.c \
 	paging.c \
 	bufcache.c gosfs.c \
+	signal.c \
 	main.c
 
 # Kernel object files built from C source files
@@ -94,10 +96,10 @@ LIBC_C_SRCS := \
 	fileio.c \
 	compat.c process.c\
 	conio.c history.c \
-	bget.c
+	bget.c signal.c \
 
 # User libc object files.
-LIBC_C_OBJS := $(LIBC_C_SRCS:%.c=libc/%.o)
+LIBC_C_OBJS := $(LIBC_C_SRCS:%.c=libc/%.o) libc/lowlevel.o
 
 # Generated libc source files
 GENERATED_LIBC_SRCS := libc/errno.c
@@ -110,7 +112,7 @@ USER_C_SRCS := \
 	ls.c touch.c tstwrite.c type.c mkdir.c sync.c cp.c rm.c\
 	format.c mount.c cat.c p5test.c \
 	shell.c b.c c.c stat.c opendir.c \
-	sokoban.c gv_test.c
+	sokoban.c gv_test.c tetris.c sigtest.c
 # User executables
 USER_PROGS := $(USER_C_SRCS:%.c=user/%.exe)
 
@@ -318,6 +320,12 @@ libc/libc.a : $(LIBC_C_OBJS) libc/errno.o $(COMMON_C_OBJS)
 # This is derived automatically from the comments in <geekos/errno.h>.
 libc/errno.c : $(PROJECT_ROOT)/include/geekos/errno.h $(PROJECT_ROOT)/scripts/generrs
 	$(GENERRS) $(PROJECT_ROOT)/include/geekos/errno.h > $@
+
+subdirs : 
+	@for dir in $(SUB_DIRS); do \
+		$(MAKE) -C $$dir all; \
+		if [ $$? != 0 ]; then exit 1; fi; \
+	done
 
 # Clean build directories of generated files
 clean :

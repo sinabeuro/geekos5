@@ -1254,6 +1254,24 @@ int bpoolv(buf)
 }
 #endif /* BufValid */
 
+static ulong_t next = 1;
+
+/* Return next random integer */
+
+int rand()
+{
+	next = next * 1103515245L + 12345;
+	return (uint_t) (next / 65536L) % 32768L;
+}
+
+/* Set seed for random generator */
+
+void srand(seed)
+  uint_t seed;
+{
+	next = seed;
+}
+
         /***********************\
 	*			*
 	* Built-in test program *
