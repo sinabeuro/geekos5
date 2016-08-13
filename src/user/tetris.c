@@ -303,13 +303,6 @@ int tty_fix (void)
 
 int main (int argc __attribute__ ((unused)), char *argv[] __attribute__ ((unused)))
 {
-#if 0
-	alarm(500, alarm_handler);
-	while(1)
-	{
-		Print("%d\n",Get_Key());
-	}
-#else
 	int c = 0, i, j, *ptr;
 	int pos = 17;
 	int *backup;
@@ -443,7 +436,6 @@ int main (int argc __attribute__ ((unused)), char *argv[] __attribute__ ((unused
 	}
 
 	return 0;
-#endif
 }
 
 /**
