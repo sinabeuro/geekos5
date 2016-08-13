@@ -99,7 +99,7 @@ static void Print_Fault_Info(uint_t address, faultcode_t faultCode)
 	#if 0
 	Print ("Unexpected Page Fault received\n");
     Print_Fault_Info(address, faultCode);
-    Dump_Interrupt_State(state);
+    //Dump_Interrupt_State(state);
 	#endif
 	
     if(faultCode.protectionViolation == 0) // Non-present page

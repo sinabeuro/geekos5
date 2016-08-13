@@ -15,6 +15,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
+ * https://github.com/troglobit/tetris
+ *
  * Ported for GeekOS by Beom-jin Kim <riddler117@gmail.com>
  *
  */

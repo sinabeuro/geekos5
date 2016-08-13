@@ -74,21 +74,21 @@ int main(int argc , char ** argv)
   Print ("************* Start Workload Generator *********\n");
   V (scr_sem) ;
 
-  id1 = Spawn_Program ("/c/long.exe", "/c/long.exe"
+  id1 = Spawn_Program ("/c/long.exe", "/c/long.exe", false
   ) ;
   P (scr_sem) ;
   Print ("Process Long has been created with ID = %d\n",id1);
   V (scr_sem) ;
 
 
-  id2 = Spawn_Program ("/c/ping.exe", "/c/ping.exe"
+  id2 = Spawn_Program ("/c/ping.exe", "/c/ping.exe", false
   ) ;
 
   P (scr_sem) ;
   Print ("Process Ping has been created with ID = %d\n",id2);
   V (scr_sem) ;
 
-  id3 = Spawn_Program ("/c/pong.exe", "/c/pong.exe"
+  id3 = Spawn_Program ("/c/pong.exe", "/c/pong.exe", false
   ) ;
   P (scr_sem) ;
   Print ("Process Pong has been created with ID = %d\n",id3);

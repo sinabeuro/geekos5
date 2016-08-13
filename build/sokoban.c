@@ -1,19 +1,11 @@
-/*
- * Sokoban solver - 
- * Copyright (c) 2010 Rosetta Code
- * Ported for GeekOS by Beom-jin Kim <riddler117@gmail.com>
- * $Revision: 0.1 $
- *
- * https://rosettacode.org/wiki/Sokoban
- */
-
-#include <conio.h>
-#include <libuser.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <stdbool.h>
  
-#define ensure(x) { if (!(x)) Print("\nabort: line %d\n", __LINE__); }
-
-#define uint8_t unsigned char
-#define uint16_t unsigned short
+#define ensure(x) { if (!(x)) printf("\nabort: line %d\n", __LINE__); }
  
 int w, h, n_boxes;
 int offset[4] = {0, 0, 1, -1};
@@ -49,7 +41,7 @@ state_t* newstate(state_t *parent) {
 	if (!block_head) {
 		block_size *= 2;
 		state_t *p;
-		ensure(p = Malloc(block_size * state_size));
+		ensure(p = malloc(block_size * state_size));
 		alloced += block_size - 1;
 		p->next = block_root;
 		block_root = p;
@@ -99,11 +91,11 @@ void mark_live(const int c)
 state_t *parse_board(const int y, const int x, const char *s)
 {
 	w = x, h = y;
-	ensure( board = Calloc(w * h, sizeof(uint8_t)) );
-	ensure( tmpmap= Calloc(w * h, sizeof(uint8_t)) );
-	ensure( goals = Calloc(w * h, sizeof(uint8_t)) );
-	ensure( live  = Calloc(w * h, sizeof(uint8_t)) );
-	ensure( dist  = Calloc(w * h, sizeof(int)) );
+	ensure( board = calloc(w * h, sizeof(uint8_t)) );
+	ensure( tmpmap= calloc(w * h, sizeof(uint8_t)) );
+	ensure( goals = calloc(w * h, sizeof(uint8_t)) );
+	ensure( live  = calloc(w * h, sizeof(uint8_t)) );
+	ensure( dist  = calloc(w * h, sizeof(int)) );
  
 	n_boxes = 0;
 	for (int i = 0; s[i]; i++) {
@@ -147,9 +139,7 @@ state_t *parse_board(const int y, const int x, const char *s)
  
 void show_board(const state_t *s)
 {
-	Put_Cursor(0, 0);
-	
-	Print("move %d\n", s->depth);
+	printf("move %d\n", s->depth);
 	unsigned char b[w * h];
 	memcpy(b, board, w * h);
  
@@ -158,9 +148,9 @@ void show_board(const state_t *s)
 		b[ s->c[i] ] = box;
  
 	for (int i = 0; i < w * h; i++) {
-		Print((goals[i] ? glyph2 : glyph1)[ b[i] ]);
+		printf((goals[i] ? glyph2 : glyph1)[ b[i] ]);
 		if (! ((1 + i) % w))
-			Put_Char('\n');
+			putchar('\n');
 	}
 }
  
@@ -194,7 +184,7 @@ void extend_table()
 	}
  
 	// rehash
-	ensure(buckets = Realloc(buckets, sizeof(state_t*) * hash_size));
+	ensure(buckets = realloc(buckets, sizeof(state_t*) * hash_size));
 	memset(buckets + old_size, 0, sizeof(state_t*) * (hash_size - old_size));
  
 	const hash_t bits = hash_size - 1;
@@ -442,7 +432,7 @@ int queue_move(state_t *s)
 		if (s->depth < known_moves) {
 			known_moves = s->depth;
 			solution = s;
-			Print("\nfound solution at move %d\n", known_moves);
+			printf("\nfound solution at move %d\n", known_moves);
 		}
 	}
  
@@ -514,7 +504,7 @@ void show_moves(state_t *s)
 					}
 				}
 				if (d) {
-					Print("\033[H");
+					printf("\033[H");
 					show_board(s);
 					usleep(100000);
 				}
@@ -523,15 +513,13 @@ void show_moves(state_t *s)
 				board[s->c[i]] = space;
 		}
 	}
-	Print("\033[H");
+	printf("\033[H");
 	show_board(s);
 	usleep(300000);
 }
  
 int main()
 {
-	Print_String("\x1B[2J");
-	
 	state_t *s = parse_board(
  
 #define BIG 0
@@ -595,42 +583,35 @@ int main()
 	extend_table();
  
 	do_move(s);
-
- 	int row;
+ 
 	for (int d = 1; d < known_moves; d++) {
-		if(solution)
-			break;
 		state_t *s = queue[d];
-		Print("depth %d (%d records, mem: %d/%dM)", d, filled,
+		printf("depth %d (%d records, mem: %d/%dM)\r", d, filled,
 			filled * state_size / (1 << 20),
 			alloced * state_size / (1 << 20));
-		//fflush(stdout);
-
+		fflush(stdout);
+ 
 		for (; s; s = s->qnext) do_move(s);
-
-		Get_Cursor(&row, NULL);
-		Put_Cursor(row, 0);
 	}
-	Put_Cursor(row, 80);
  
 	if (solution) {
-		Print("\npress any key to see solution\n");
-		Get_Key();Get_Key();
-		Print_String("\x1B[2J");
+		printf("\npress any key to see solution\n");
+		getchar();
+		puts("\033[H\033[J");
 		show_moves(solution);
 	}
  
-#if 1
-	Free(buckets);
-	Free(board);
-	Free(tmpmap);
-	Free(goals);
-	Free(live);
-	Free(dist);
+#if 0
+	free(buckets);
+	free(board);
+	free(tmpmap);
+	free(goals);
+	free(live);
+	free(dist);
  
 	while (block_root) {
 		void *tmp = block_root->next;
-		Free(block_root);
+		free(block_root);
 		block_root = tmp;
 	}
 #endif

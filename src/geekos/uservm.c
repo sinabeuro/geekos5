@@ -308,6 +308,9 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 	/* Copy pwd from parent process */
 	memcpy(&(*pUserContext)->pwd, Get_Cwd(), sizeof(struct path)); /* weak */
 
+	(*pUserContext)->signal = 0;
+	memset((*pUserContext)->saHandler, 0, MAXSIG*sizeof(signal_handler));
+	
 	/* Setup LDT */
 	/* Alloc LDT seg desc in GDT */
 	desc = Allocate_Segment_Descriptor();
@@ -427,8 +430,9 @@ void Switch_To_Address_Space(struct User_Context *userContext)
      */
 
 	Load_LDTR(userContext->ldtSelector);
+	//Print("%x, %x\n", 0xffffef80, *((ulong_t *)0xffffef80));
 	Set_PDBR(userContext->pageDir);
-	
+	//Print("%x, %x\n", 0x7fffef80, *((ulong_t *)0x7fffef80));
 	//Print("0x1000: %x\n", *(int*)(0x34000));
 
 	

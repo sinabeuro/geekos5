@@ -20,7 +20,7 @@
 #include <geekos/user.h>
 #include <geekos/timer.h>
 #include <geekos/vfs.h>
-
+#include <geekos/signal.h>
 
 /*
  * Null system call.
@@ -60,12 +60,11 @@ static int Sys_Exit(struct Interrupt_State* state)
  */
 static int Sys_PrintString(struct Interrupt_State* state)
 {
-   	char string[100] = {'\0'};
+   	char string[100] = {'\0',};
 	int len = state->ecx;	
 	int i;
 
 	Copy_From_User(string, state->ebx, len);
-
  	Print(string);
  	return 0;
 }
@@ -132,6 +131,7 @@ static int Sys_PutCursor(struct Interrupt_State* state)
  *   state->ecx - length of executable name
  *   state->edx - user address of command string
  *   state->esi - length of command string
+ *   state->edi - whether background or foreground
  * Returns: pid of process if successful, error code (< 0) otherwise
  */
 static int Sys_Spawn(struct Interrupt_State* state)
@@ -146,7 +146,7 @@ static int Sys_Spawn(struct Interrupt_State* state)
 	//Print("%s\n", program);
 	//Print("%s\n", command);
 	Enable_Interrupts();
-	pid = Spawn(program, command, pThread);
+	pid = Spawn(program, command, pThread, state->edi);
 	Disable_Interrupts();
 	return pid;
     //TODO("Spawn system call");
@@ -163,7 +163,7 @@ static int Sys_Wait(struct Interrupt_State* state)
 {
 	int exitcode;
 	Enable_Interrupts();
-	exitcode = Join(Lookup_Thread(state->ebx));
+	exitcode = Join(Lookup_Thread(state->ebx, 1)); // weak;
 	Disable_Interrupts();
 	return exitcode;
 
@@ -475,7 +475,7 @@ static int Sys_ReadEntry(struct Interrupt_State *state)
 
 	Enable_Interrupts();
 	//Print("%d, fileList[state->ebx] : %x\n", state->ebx, fileList[state->ebx]);
-	rc = Read_Entry(fileList[state->ebx], (struct VFS_File_Stat *)(USER_BASE_ADDR + state->ecx)); // weak
+	rc = Read_Entry(fileList[state->ebx], (struct VFS_File_Stat *)(USER_BASE_ADDR + state->ecx));  /* weak */
 	Disable_Interrupts();
 	return rc;
 
@@ -500,7 +500,7 @@ static int Sys_Write(struct Interrupt_State *state)
 	struct File** fileList = g_currentThread->userContext->fileList;
 
 	fd = fileList[state->ebx];
-	rc = Write(fd, USER_BASE_ADDR + state->ecx, state->edx);
+	rc = Write(fd, USER_BASE_ADDR + state->ecx, state->edx);  /* weak */
 	return rc;
 	
     //TODO("Write system call");
@@ -522,7 +522,7 @@ static int Sys_Stat(struct Interrupt_State *state)
 	Copy_From_User(path, state->ebx, state->ecx);
 	
     Enable_Interrupts();
-	rc = Stat(path, (struct VFS_File_Stat *)(USER_BASE_ADDR + state->edx)); // weak
+	rc = Stat(path, (struct VFS_File_Stat *)(USER_BASE_ADDR + state->edx));  /* weak */
 	Disable_Interrupts();
 	return rc;
     //TODO("Stat system call");
@@ -659,8 +659,9 @@ static void Sys_Usleep(struct Interrupt_State *state)
 
 static void Sys_Alarm(struct Interrupt_State *state)
 {
-	Print("in systemcall! : %x\n", USER_BASE_ADDR+state->ecx);
-	Start_Timer(state->ebx, USER_BASE_ADDR+state->ecx);
+	//Print("in systemcall! : %x\n", USER_BASE_ADDR+state->ecx);  /* weak */
+	Set_Handler(Get_Current(), SIGALRM, state->ecx);
+	Start_Timer(state->ebx, NULL); /* weak */
 }
 
 static void Sys_SysInfo(struct Interrupt_State *state)
@@ -681,7 +682,11 @@ static void Sys_SysInfo(struct Interrupt_State *state)
  */
 static int Sys_PS(struct Interrupt_State* state)
 {
-    TODO("Sys_PS system call");
+	struct Process_Info procInfo[50] = {'\0', };
+	Dump_All_Thread_List(procInfo);	
+	Copy_To_User(state->ebx, procInfo, state->ecx*sizeof(struct Process_Info));
+	return 0;
+    //TODO("Sys_PS system call");
 }
 
 
@@ -694,7 +699,15 @@ static int Sys_PS(struct Interrupt_State* state)
  */
 static int Sys_Kill(struct Interrupt_State* state)
 {
-    TODO("Sys_Kill system call");
+	struct Kernel_Thread* kthread = NULL;
+	kthread = Lookup_Thread(state->ebx, false);
+	Send_Signal(kthread, state->ecx);
+	if(kthread->blocked == true){
+		Wake_Up_Process(kthread);
+	}
+	if(Get_Current()->pid != kthread->owner) kthread->refCount-- ; /* deref */
+	return 0;
+
 }
 
 /*
@@ -706,7 +719,9 @@ static int Sys_Kill(struct Interrupt_State* state)
  */
 static int Sys_Signal(struct Interrupt_State* state)
 {
-    TODO("Sys_Signal system call");
+	Set_Handler(Get_Current(), state->ecx, state->ebx);
+	return 0;
+    //TODO("Sys_Signal system call");
 }
 
 /*
@@ -721,7 +736,15 @@ static int Sys_Signal(struct Interrupt_State* state)
  */
 static int Sys_RegDeliver(struct Interrupt_State* state)
 {
-    TODO("Sys_RegDeliver system call");
+
+	struct Kernel_Thread* kthread = Get_Current();
+	kthread->userContext->returnSignal	= state->ebx;
+	kthread->userContext->dflHandler	= state->ecx;
+	kthread->userContext->ignHandler	= state->edx; 
+	for(int i = 1; i <= MAXSIG; i++)
+		Set_Handler(kthread, i, state->ecx);
+	return 0;
+    //TODO("Sys_RegDeliver system call");
 }
 
 /*
@@ -733,7 +756,10 @@ static int Sys_RegDeliver(struct Interrupt_State* state)
  */
 static int Sys_ReturnSignal(struct Interrupt_State* state)
 {
-    TODO("Sys_ReturnSignal system call");
+	struct Kernel_Thread* kthread = Get_Current();
+	Complete_Handler(kthread, state);
+	return -1;
+    //TODO("Sys_ReturnSignal system call");
 }
 
 /*
@@ -744,7 +770,13 @@ static int Sys_ReturnSignal(struct Interrupt_State* state)
  */
 static int Sys_WaitNoPID(struct Interrupt_State* state)
 {
-    TODO("Sys_WaitNoPID system call");
+	int status = 0;
+	Print("Sys_WaitNoPID : %x\n", state->ebx);
+	status = 0x7;
+	Copy_To_User(state->ebx, &status, sizeof(int));
+	return -1;
+	//WaitNoPID(&status);
+    //TODO("Sys_WaitNoPID system call");
 }
 
 /*

@@ -608,6 +608,7 @@ void Init_Floppy(void)
     uchar_t floppyByte;
     bool ready = false;
     bool good;
+   	struct Kernel_Thread* kthread = NULL;
 
     Print("Initializing floppy controller...\n");
 
@@ -644,7 +645,8 @@ void Init_Floppy(void)
      * Start the request processing thread.
      */
     ready = true;
-    Start_Kernel_Thread(Floppy_Request_Thread, 0, PRIORITY_NORMAL, true);
+    kthread = Start_Kernel_Thread(Floppy_Request_Thread, 0, PRIORITY_NORMAL, true);
+   	strcpy(kthread->name, "{Floppy_Request}");
 
 done:
     if (!ready)

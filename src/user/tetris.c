@@ -19,6 +19,8 @@
  * the game http://homepages.cwi.nl/~tromp/tetris.html then there's the entry
  * page at IOCCC http://www.ioccc.org/1989/tromp.hint
  *
+ * https://github.com/troglobit/tetris
+ *
  * Ported for GeekOS by Beom-jin Kim <riddler117@gmail.com>
  *
  */
@@ -83,12 +85,15 @@ int shapes[] = {
     6,  TC,  BC,  2 * B_COLS,   /* sticks out */
 };
 
-void alarm_handler (int signal)
+void alarm_handler (void)
 {
-	int i = 0;
-	i++;
+	static long freq = 500;
+	long temp = freq;
 	//Print("TEST ALARM HANDLER!\n");
-	alarm(500, alarm_handler);
+	for(int i = 1; i < level; i++)
+		temp = temp*8/10;
+		
+	alarm(temp, alarm_handler);
 #if 0
    static long h[4];
 
@@ -101,6 +106,7 @@ void alarm_handler (int signal)
    h[3] -= h[3] / (3000 - 10 * level);
    setitimer (0, (struct itimerval *)h, 0);
 #endif
+	return;
 }
 
 int update (void)
@@ -126,7 +132,7 @@ int update (void)
          {
             shadow_preview[y * B_COLS + x] = preview[y * B_COLS + x];
             gotoxy (x * 2 + 26 + 28, start + y);
-            Set_Attr(ATTRIB(BRIGHT, GRAY|BRIGHT));
+            Set_Attr(ATTRIB(BLUE, BRIGHT));
             Print ("\033[%dm  ", preview[y * B_COLS + x]);
             Set_Attr(ATTRIB(BLACK, GRAY));
          }
@@ -143,7 +149,7 @@ int update (void)
          {
             shadow[y * B_COLS + x] = board[y * B_COLS + x];
             gotoxy (x * 2 + 28, y);
-          	Set_Attr(ATTRIB(BRIGHT, GRAY|BRIGHT));
+          	Set_Attr(ATTRIB(GRAY , BRIGHT));
             Print ("\033[%dm  ", board[y * B_COLS + x]);
            	Set_Attr(ATTRIB(BLACK, GRAY));
          }
@@ -297,9 +303,13 @@ int tty_fix (void)
 
 int main (int argc __attribute__ ((unused)), char *argv[] __attribute__ ((unused)))
 {
-	//alarm(500, alarm_handler);
-	//Get_Key(); Get_Key(); 
-#if 1
+#if 0
+	alarm(500, alarm_handler);
+	while(1)
+	{
+		Print("%d\n",Get_Key());
+	}
+#else
 	int c = 0, i, j, *ptr;
 	int pos = 17;
 	int *backup;
@@ -333,7 +343,7 @@ int main (int argc __attribute__ ((unused)), char *argv[] __attribute__ ((unused
 
 	/* Call it once to start the timer. */
 #endif
-	alarm_handler (0);
+	alarm_handler();
 
 	clrscr ();
 	show_online_help ();

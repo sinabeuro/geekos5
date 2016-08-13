@@ -21,7 +21,7 @@ typedef int (*custom_handler)(Keycode*, char*, char**, size_t*, void*);
 void Print(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 int Print_String(const char* msg);
 int Put_Char(int ch);
-Keycode Get_Key(void);
+int Get_Key(void);
 int Set_Attr(int attr);
 int Get_Cursor(int *row, int *col);
 int Put_Cursor(int row, int col);

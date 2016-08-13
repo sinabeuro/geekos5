@@ -19,45 +19,45 @@
 DEF_SYSCALL(Null,SYS_NULL,int,(void),,SYSCALL_REGS_0)
 DEF_SYSCALL(Exit,SYS_EXIT,int,(int exitCode), int arg0 = exitCode;, SYSCALL_REGS_1)
 DEF_SYSCALL(Spawn_Program,SYS_SPAWN,int,
-    (const char *program, const char *command),
-    const char *arg0 = program; size_t arg1 = strlen(program); const char *arg2 = command; size_t arg3 = strlen(command);,
-    SYSCALL_REGS_4)
+    (const char *program, const char *command, bool bg),
+    const char *arg0 = program; size_t arg1 = strlen(program); const char *arg2 = command; size_t arg3 = strlen(command);
+    bool arg4 = bg;, SYSCALL_REGS_5)
 DEF_SYSCALL(Wait,SYS_WAIT,int,(int pid),int arg0 = pid;,SYSCALL_REGS_1)
 DEF_SYSCALL(Get_PID,SYS_GETPID,int,(void),,SYSCALL_REGS_0)	
 DEF_SYSCALL(getcwd,SYS_GETCWD,int,(char* buf, int size), char *arg0 = buf; int arg1 = size;, SYSCALL_REGS_2)
 DEF_SYSCALL(chdir,SYS_CHDIR,int,(const char* dirname), char *arg0 = dirname;, SYSCALL_REGS_1)
 DEF_SYSCALL(usleep,SYS_USLEEP,void,(int us), char *arg0 = us;, SYSCALL_REGS_1)
 DEF_SYSCALL(alarm,SYS_ALARM,void,(int us, int* cb), int arg0 = us; int *arg1 = cb;, SYSCALL_REGS_2)
+DEF_SYSCALL(PS,SYS_PS,int,(struct Process_Info *ptable, int len),struct Process_Info *arg0 = ptable; int arg1 = len;,SYSCALL_REGS_2)
 DEF_SYSCALL(WaitNoPID,SYS_WAITNOPID,int,(int *status),int *arg0 = status;,SYSCALL_REGS_1)
 
 #define CMDLEN 79
 
-static bool Ends_With(const char *name, const char *suffix)
+bool Ends_With(const char *name, const char *suffix)
 {
     size_t nameLen = strlen(name);
     size_t suffixLen = strlen(suffix);
     size_t start, i;
 
     if (suffixLen > nameLen)
-	return false;
+		return false;
     start = nameLen - suffixLen;
 
     for (i = 0; i < suffixLen; ++i) {
-	if (name[start + i] != suffix[i])
-	    return false;
+		if (name[start + i] != suffix[i])
+		    return false;
     }
     return true;
 }
 
 int Spawn_With_Path(const char *program, const char *command,
-    const char *path)
+    const char *path, bool bg)
 {
     int pid;
     char exeName[(CMDLEN*2)+5];
 
     /* Try executing program as specified */
-    pid = Spawn_Program(program, command
-	);
+    pid = Spawn_Program(program, command, bg);
 
     if (pid == ENOTFOUND && strchr(program, '/') == 0) {
 		/* Search for program on path. */
@@ -87,8 +87,7 @@ int Spawn_With_Path(const char *program, const char *command,
 			strcat(exeName, ".exe");
 
 		    /*Print("exeName=%s\n", exeName);*/
-		    pid = Spawn_Program(exeName, command
-			);
+		    pid = Spawn_Program(exeName, command, bg);
 		    if (pid != ENOTFOUND)
 			break;
 		}

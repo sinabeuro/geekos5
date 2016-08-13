@@ -6,14 +6,15 @@
  */
 
 #include <stddef.h>
+#include <geekos/ktypes.h>
 
 typedef unsigned short Keycode;
 
 int Null(void);
 void Exit(void);
 int Print_String(const char* message);
-Keycode Get_Key(void);
-int Spawn_Program(char* program);
+int Get_Key(void);
+int Spawn_Program(char* program, bool bg);
 int Wait(unsigned int pid);
 
 void Init_Heap(unsigned int start, unsigned int size);

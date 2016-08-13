@@ -86,7 +86,7 @@ void Detach_User_Context(struct Kernel_Thread* kthread)
  *   should return ENOTFOUND if the reason for failure is that
  *   the executable file doesn't exist.
  */
-int Spawn(const char *program, const char *command, struct Kernel_Thread **pThread)
+int Spawn(const char *program, const char *command, struct Kernel_Thread **pThread, bool detached)
 {
     /*
      * Hints:
@@ -133,8 +133,9 @@ int Spawn(const char *program, const char *command, struct Kernel_Thread **pThre
     (struct User_Context **)&pUserContext);
 
 	Free(exeFileData);
-	*pThread = Start_User_Thread(pUserContext, false);
-
+	*pThread = Start_User_Thread(pUserContext, detached);
+	strcpy((*pThread)->name, command); 
+	
 	return (*pThread)->pid;   
     //TODO("Spawn a process by reading an executable from a filesystem");
 }

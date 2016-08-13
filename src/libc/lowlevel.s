@@ -8,6 +8,6 @@
 # !!! Assumes syscall 14 is Return_Signal!
         .type   Return_Signal,@function
 Return_Signal:
-	movl  $14,%eax
+	movl  $38,%eax
 	int   $0x90
 #@endi

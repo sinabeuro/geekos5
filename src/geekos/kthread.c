@@ -89,7 +89,7 @@ static void Init_Thread(struct Kernel_Thread* kthread, void* stackPage,
 {
     static int nextFreePid = 1;
 
-    struct Kernel_Thread* owner = detached ? (struct Kernel_Thread*)0 : g_currentThread;
+    struct Kernel_Thread* owner = detached ? (struct Kernel_Thread*) 0 : g_currentThread;
 
     memset(kthread, '\0', sizeof(*kthread));
     kthread->stackPage = stackPage;
@@ -112,6 +112,7 @@ static void Init_Thread(struct Kernel_Thread* kthread, void* stackPage,
 
     kthread->currentReadyQueue = 0;
     kthread->blocked = false;
+    strcpy(kthread->name, "{kernel}");
 }
 
 /*
@@ -208,7 +209,7 @@ static void Detach_Thread(struct Kernel_Thread* kthread)
 
     --kthread->refCount;
     if (kthread->refCount == 0) {
-	Reap_Thread(kthread);
+		Reap_Thread(kthread);
     }
 }
 
@@ -537,12 +538,14 @@ void Switch_To_MLF(void)
 void Init_Scheduler(void)
 {
     struct Kernel_Thread* mainThread = (struct Kernel_Thread *) KERN_THREAD_OBJ;
-
+	struct Kernel_Thread* kthread = NULL;
+	
     /*
      * Create initial kernel thread context object and stack,
      * and make them current.
      */
     Init_Thread(mainThread, (void *) KERN_STACK, PRIORITY_NORMAL, true);
+    strcpy(mainThread->name, "{Main}");
     g_currentThread = mainThread;
     Add_To_Back_Of_All_Thread_List(&s_allThreadList, mainThread);
 
@@ -551,15 +554,15 @@ void Init_Scheduler(void)
      * Create the idle thread.
      */
     /*Print("starting idle thread\n");*/
-    Start_Kernel_Thread(Idle, 0, PRIORITY_IDLE, true);
-
+    kthread = Start_Kernel_Thread(Idle, 0, PRIORITY_IDLE, true);
+	strcpy(kthread->name, "{Idle}");
 
     /*
      * Create the reaper thread.
      */
     /*Print("starting reaper thread\n");*/
-    Start_Kernel_Thread(Reaper, 0, PRIORITY_NORMAL, true);
-
+    kthread = Start_Kernel_Thread(Reaper, 0, PRIORITY_NORMAL, true);
+	strcpy(kthread->name, "{Reaper}");
 }
 
 /*
@@ -651,7 +654,7 @@ void Make_Runnable(struct Kernel_Thread* kthread)
 		/* Prevent to idle process move out queue */
 		if(kthread->priority == PRIORITY_IDLE)
 			kthread->currentReadyQueue = MAX_QUEUE_LEVEL - 1 ;
-			
+
 		kthread->blocked = false;
 		Enqueue_Thread(&s_runQueue[kthread->currentReadyQueue], kthread);
 		
@@ -728,7 +731,10 @@ void Schedule(void)
      * Eventually, this thread will get re-activated and Switch_To_Thread()
      * will "return", and then Schedule() will return to wherever
      * it was called from.
-     */
+     */
+    if(runnable->pid == 7 &&  runnable->userContext->signal ==5){
+    	Print("pid : %d\n", Get_Current()->pid);
+	}
     Switch_To_Thread(runnable);
 }
 
@@ -797,7 +803,7 @@ int Join(struct Kernel_Thread* kthread)
 
     /* Wait for it to die */
     while (kthread->alive) {
-	Wait(&kthread->joinQueue);
+		Wait(&kthread->joinQueue);
     }
 
     /* Get thread exit code. */
@@ -813,9 +819,12 @@ int Join(struct Kernel_Thread* kthread)
 
 /*
  * Look up a thread by its process id.
- * The caller must be the thread's owner.
+ * notOwner is true if the thread is assumed to be the caller's
+ * owner.  If the thread is NOT the owner, then it is assumed
+ * the caller will not retain the extra reference with interrupts
+ * enabled, or else the thread could die and create a dangling pointer.
  */
-struct Kernel_Thread* Lookup_Thread(int pid)
+struct Kernel_Thread* Lookup_Thread(int pid, int notOwner)
 {
     struct Kernel_Thread *result = 0;
 
@@ -830,8 +839,8 @@ struct Kernel_Thread* Lookup_Thread(int pid)
     result = Get_Front_Of_All_Thread_List(&s_allThreadList);
     while (result != 0) {
 	if (result->pid == pid) {
-	    if (g_currentThread != result->owner)
-		result = 0;
+	    if (g_currentThread != result->owner && !notOwner)
+			result->refCount++; /* must be unref */
 	    break;
 	}
 	result = Get_Next_In_All_Thread_List(result);
@@ -841,7 +850,6 @@ struct Kernel_Thread* Lookup_Thread(int pid)
 
     return result;
 }
-
 
 /*
  * Wait on given wait queue.
@@ -862,7 +870,7 @@ void Wait(struct Thread_Queue* waitQueue)
     /* Add the thread to the wait queue. */
     current->blocked = true;
     Enqueue_Thread(waitQueue, current);
-
+    Get_Current()->waitQueue = waitQueue; /* restore queue reference */ 
     /* Find another thread to run. */
     Schedule();
 }
@@ -884,9 +892,9 @@ void Wake_Up(struct Thread_Queue* waitQueue)
      * transferring each one to the run queue.
      */
     while (kthread != 0) {
-	next = Get_Next_In_Thread_Queue(kthread);
-	Make_Runnable(kthread);
-	kthread = next;
+		next = Get_Next_In_Thread_Queue(kthread);
+		Make_Runnable(kthread);
+		kthread = next;
     }
 
     /* The wait queue is now empty. */
@@ -912,6 +920,15 @@ void Wake_Up_One(struct Thread_Queue* waitQueue)
 	/*Print("Wake_Up_One: waking up %x from %x\n", best, g_currentThread); */
     }
 }
+
+void Wake_Up_Process(struct Kernel_Thread* kthread)
+{
+	KASSERT(!Interrupts_Enabled());
+	/* Remove from wait queue if wating */
+	Remove_Thread(kthread->waitQueue, kthread);
+	Make_Runnable(kthread);
+}
+
 
 /*
  * Allocate a key for accessing thread-local data.
@@ -961,7 +978,7 @@ void *Tlocal_Get(tlocal_key_t k)
  * Print list of all threads in system.
  * For debugging.
  */
-void Dump_All_Thread_List(void)
+void Dump_All_Thread_List(struct Process_Info* procInfo)
 {
     struct Kernel_Thread *kthread;
     int count = 0;
@@ -969,17 +986,31 @@ void Dump_All_Thread_List(void)
 
     kthread = Get_Front_Of_All_Thread_List(&s_allThreadList);
 
-    Print("[");
+    //Print("[");
     while (kthread != 0) {
-	++count;
-	Print("<%lx,%lx,%lx>",
-	    (ulong_t) Get_Prev_In_All_Thread_List(kthread),
-	    (ulong_t) kthread,
-	    (ulong_t) Get_Next_In_All_Thread_List(kthread));
-	KASSERT(kthread != Get_Next_In_All_Thread_List(kthread));
-	kthread = Get_Next_In_All_Thread_List(kthread);
+		++count;
+		strcpy(procInfo[count].name, kthread->name);
+		procInfo[count].parent_pid = (kthread->owner)? kthread->owner->pid : kthread->owner;
+		procInfo[count].pid = kthread->pid;
+		procInfo[count].priority = kthread->priority;
+		procInfo[count].status = kthread->blocked;
+		
+	#if 0
+		Print("<%s,%d,%d>\n",
+		    procInfo[count].name,
+		    procInfo[count].pid,
+		    procInfo[count].priority);
+
+		Print("<%lx,%lx,%lx>",
+		    (ulong_t) Get_Prev_In_All_Thread_List(kthread),
+		    (ulong_t) kthread,
+		    (ulong_t) Get_Next_In_All_Thread_List(kthread));
+	#endif
+		KASSERT(kthread != Get_Next_In_All_Thread_List(kthread));
+		kthread = Get_Next_In_All_Thread_List(kthread);
+
     }
-    Print("]\n");
+    //Print("]\n");
     Print("%d threads are running\n", count);
 
     End_Int_Atomic(iflag);

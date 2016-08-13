@@ -16,7 +16,9 @@
 struct Kernel_Thread;
 struct User_Context;
 struct Interrupt_State;
+struct Process_Info;
 
+#define MAX_PROC_NAME_SZB 128
 /*
  * Queue of threads.
  * This is used for the run queue(s), and also for
@@ -66,6 +68,9 @@ struct Kernel_Thread {
      */
     int currentReadyQueue;
     bool blocked;
+    char name[MAX_PROC_NAME_SZB]; /* weak */
+
+	struct Thread_Queue* waitQueue;
 };
 
 struct sysinfo {
@@ -127,7 +132,7 @@ void Schedule(void);
 void Yield(void);
 void Exit(int exitCode) __attribute__ ((noreturn));
 int Join(struct Kernel_Thread* kthread);
-struct Kernel_Thread* Lookup_Thread(int pid);
+struct Kernel_Thread* Lookup_Thread(int pid, int notOwner);
 
 /*
  * Thread context switch function, defined in lowlevel.asm
@@ -169,7 +174,7 @@ extern void Tlocal_Put(tlocal_key_t, const void *);
 extern void *Tlocal_Get(tlocal_key_t);
 
 /* Print list of all threads, for debugging. */
-extern void Dump_All_Thread_List(void);
+extern void Dump_All_Thread_List(struct Process_Info* procInfo);
 
 
 #endif  /* GEEKOS_KTHREAD_H */

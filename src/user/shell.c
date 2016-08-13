@@ -63,8 +63,10 @@ int main(int argc, char **argv)
 	Add_History_Item(&history, "touch /d/test");
 	Add_History_Item(&history, "mkdir /d/new");
 	Add_History_Item(&history, "ls /d/new");
+	Add_History_Item(&history, "null &");
+	Add_History_Item(&history, "kill 7 1");
 
-    /* Set attribute to gray on black. */
+	/* Set attribute to gray on black. */
 	Print("\x1B[37m");
     while (true) {
 		/* Print shell prompt (bright cyan on black background) */
@@ -267,36 +269,36 @@ int Build_Pipeline(char *command, struct Process procList[])
 
         /* Output redirection to file or pipe? */
         if (s != 0 && (*s == '>' || *s == '|')) {
-	    bool outfile = (*s == '>');
-	    proc->flags |= (outfile ? OUTFILE : PIPE);
-	    *s = '\0';
-	    p = s+1;
-	    if (outfile) {
-	        s = Copy_Token(proc->outfile, p);
-	        if (s == 0) {
-		    Print("Error: invalid output redirection\n");
-		    return -1;
-	        }
-	        p = s;
-	    }
+		    bool outfile = (*s == '>');
+		    proc->flags |= (outfile ? OUTFILE : PIPE);
+		    *s = '\0';
+		    p = s+1;
+		    if (outfile) {
+		        s = Copy_Token(proc->outfile, p);
+		        if (s == 0) {
+			    Print("Error: invalid output redirection\n");
+			    return -1;
+		        }
+		        p = s;
+		    }
         }
 
         proc->command = command;
         /*Print("command=%s\n", command);*/
         if (!Copy_Token(proc->program, command)) {
-	    Print("Error: invalid command\n");
-	    return -1;
+		    Print("Error: invalid command\n");
+		    return -1;
         }
 
         if (p == command)
-	    command = "";
+	    	command = "";
         else
-	    command = p;
+	    	command = p;
     }
 
     if (strcmp(command,"") != 0) {
-	Print("Error: too many commands in pipeline\n");
-	return -1;
+		Print("Error: too many commands in pipeline\n");
+		return -1;
     }
 
 #if 0
@@ -340,6 +342,7 @@ int Build_Pipeline(char *command, struct Process procList[])
 void Spawn_Single_Command(struct Process procList[], int nproc, const char *path)
 {
     int pid;
+    bool bg = false;
 
     if (nproc > 1) {
 		Print("Error: pipes not supported yet\n");
@@ -350,14 +353,22 @@ void Spawn_Single_Command(struct Process procList[], int nproc, const char *path
 		return;
     }
 
-    pid = Spawn_With_Path(procList[0].program, procList[0].command,
-	path);
+    /* weak : need to ends with whitespace */
+	if (Ends_With(procList[0].command, "&"))
+		bg = true; 
+	
+    pid = Spawn_With_Path(procList[0].program, procList[0].command,	path, bg);
     if (pid < 0)
 		Print("Could not spawn process: %s\n", Get_Error_String(pid));
     else {
-		int exitCode = Wait(pid);
-		if (exitCodes)
-		    Print("Exit code was %d\n", exitCode);
+		if(!bg){
+			int exitCode = Wait(pid);
+			if (exitCodes)
+			    Print("Exit code was %d\n", exitCode);
+		}
+		else{
+			Print("[%d]\n", pid);
+		}
     }
 }
 

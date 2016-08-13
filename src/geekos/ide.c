@@ -371,6 +371,7 @@ static int readDriveConfig(int drive)
 void Init_IDE(void)
 {
     int errorCode;
+   	struct Kernel_Thread* kthread = NULL;
 
     Print("Initializing IDE controller...\n");
 
@@ -405,5 +406,6 @@ void Init_IDE(void)
 
     /* Start request thread */
     if (numDrives > 0)
-	Start_Kernel_Thread(IDE_Request_Thread, 0, PRIORITY_NORMAL, true);
+	kthread = Start_Kernel_Thread(IDE_Request_Thread, 0, PRIORITY_NORMAL, true);
+	strcpy(kthread->name, "{IDE_Request}");
 }

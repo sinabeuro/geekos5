@@ -32,29 +32,67 @@
 
 void Send_Signal(struct Kernel_Thread *kthread, int sig)
 {
-  //TODO("implement Send_Signal");
+	kthread->userContext->signal = sig;
+	//TODO("implement Send_Signal");
 }
 
 /* Called when signal handling is complete. */
-void Complete_Handler(struct Kernel_Thread *kthread, 
-		      struct Interrupt_State* esp) {
-  //TODO("implement Complete_Handler");
+void Complete_Handler(struct Kernel_Thread *kthread, struct Interrupt_State* esp)
+{
+	void **p = (void **)(((struct Interrupt_State *)esp)+1);
+ 	//Print("esp+n[0]=%x\n",(unsigned int)p[0]);
+	//Print_IS(p[0]+USER_BASE_ADDR);
+	memcpy(esp, p[0]+USER_BASE_ADDR, sizeof(struct Interrupt_State)+2*sizeof(uint_t));
+	
+	//TODO("implement Complete_Handler");
 }
 
 void Set_Handler(struct Kernel_Thread *kthread, int sig, signal_handler handler)
 {
+	kthread->userContext->saHandler[sig] = handler;
   //TODO("implement Set_Handler");
 }
 
 int Check_Pending_Signal(struct Kernel_Thread *kthread, struct Interrupt_State* esp)
 {
-  //TODO("implement Check_Pending_Signal");
-  // You can make this return 0 while working on the non-delivery
-  // parts of signal handling ...
-  return 0;
+	static int i = 0;
+	//TODO("implement Check_Pending_Signal");
+	// You can make this return 0 while working on the non-delivery
+	// parts of signal handling ...
+
+	KASSERT(!Interrupts_Enabled());
+	/*
+	 * The process is about to start executing in user space. 
+	 * if it is not the kernel's cs register then the process is about to return to user space.
+	 */
+	if(esp->cs == KERNEL_CS)
+	{
+		if(!kthread->userContext)
+			return 0;
+		
+		if(kthread->userContext->signal != 0 && kthread->waitQueue){
+			//Print("Check_Pending_Signal START: %d\n", kthread->userContext->signal);
+			//Print_IS(esp);
+			//TODO("");
+			i++;
+			return kthread->userContext->signal;
+		}
+		return 0;
+	}
+	
+	if(kthread->userContext)
+	{
+		if(kthread->userContext->signal)
+		{
+			return kthread->userContext->signal;
+		}
+	}
+
+	return  0;
+  	
 }
 
-#if 0
+#if 1
 void Print_IS(struct Interrupt_State *esp) {
   void **p;
   Print("esp=%x:\n",(unsigned int)esp);
@@ -90,7 +128,56 @@ void dump_stack(unsigned int* esp, unsigned int ofs) {
 #endif
 
 void Setup_Frame(struct Kernel_Thread *kthread, struct Interrupt_State *esp)
-{
-  TODO("implement Setup_Frame");
+{	
+
+  	Print("%s", (char*)(kthread->userContext->stackPointerAddr));
+	void **p = 0;
+	char* userStackPtr = 0;
+	char* kernStackPtr = 0;
+	char* userStackDs = 0;
+
+	//Print("1.esp=%x\n", esp);
+	//esp = (char*)kthread->stackPage + PAGE_SIZE - (sizeof(struct Interrupt_State)+2*sizeof(uint_t));
+
+	memcpy(esp, (char*)kthread->stackPage + PAGE_SIZE - (sizeof(struct Interrupt_State)+2*sizeof(uint_t)),
+	(sizeof(struct Interrupt_State)+2*sizeof(uint_t)));
+	
+	//Print("2.esp=%x\n", esp );
+	
+	p = (void **)(((struct Interrupt_State *)esp)+1);
+	userStackPtr = (char*)(USER_BASE_ADDR + (unsigned int)p[0]);
+	userStackDs = (char*)((unsigned int)p[1]);
+
+ 	userStackPtr -= sizeof(ulong_t);
+    *((ulong_t *) userStackPtr) = userStackDs;
+
+    userStackPtr -= sizeof(ulong_t);
+    *((ulong_t *) userStackPtr) = p[0];
+    
+	userStackPtr -= sizeof(struct Interrupt_State);
+	
+	memcpy(userStackPtr, esp, sizeof(struct Interrupt_State));
+
+	//Print("%s", (char*)(kthread->userContext->stackPointerAddr));
+    //Print("%s", (char*)(kthread->userContext->stackPointerAddr));
+
+    userStackPtr -= sizeof(signal_handler);
+    *((signal_handler *) userStackPtr) = kthread->userContext->returnSignal;
+	//Print("returnSignal %x : %x\n", userStackPtr, *((signal_handler *) userStackPtr));
+    //kernStackPtr = ((char*)kthread->stackPage) + PAGE_SIZE - sizeof(struct Interrupt_State);
+    // need to analyze
+    esp->eip = (char*)kthread->userContext->saHandler[kthread->userContext->signal];
+    //Print("%x\n", esp->eip);
+    //Print("addr=%x\n", p[0]);
+    *((ulong_t *)&p[0]) = userStackPtr - USER_BASE_ADDR;
+    kthread->userContext->signal = 0;
+    //Print("addr=%x\n", p[0]);
+
+	//Print("%x,\n", *((ulong_t *)0x7ffff010));
+    //Print("%x : %x\n", kernStackPtr, *((ulong_t *) kernStackPtr));
+    //Print("%x : %x\n", (char*)esp+2*sizeof(ulong_t), *((ulong_t *)((char*)esp+2*sizeof(ulong_t))));
+	//Print_IS(esp);
+	kthread->waitQueue = NULL;
+
 }
 

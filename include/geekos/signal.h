@@ -26,9 +26,10 @@
 #define SIGUSR1  2
 #define SIGUSR2  3
 #define SIGCHLD  4
+#define SIGALRM  5
 
 /* The largest signal number supported */
-#define MAXSIG   4
+#define MAXSIG   5
 
 /* Definition of a signal handler */
 typedef void (*signal_handler)(void);

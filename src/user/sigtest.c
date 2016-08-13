@@ -38,12 +38,12 @@ void my_handler2(void) {
 
 int main(int argc, char** argv)
 {
-  Signal(my_handler,SIGUSR1);
-  Signal(my_handler2,SIGUSR2);
+	Signal(my_handler,SIGUSR1);
+	Signal(my_handler2,SIGUSR2);
 
-  Print("entering g loop\n");
-  for(;g == 0;) count++;
-  Print("done with g loop!\n");
+	Print("entering g loop\n");
+	for(;g == 0;) count++;
+	Print("done with g loop!\n");
 
-  return 0;
+	return 0;
 }

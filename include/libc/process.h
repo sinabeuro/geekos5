@@ -11,10 +11,14 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
+#include <geekos/user.h>
+#include <geekos/ktypes.h>
+
 int Null(void);
 int Exit(int exitCode);
-int Spawn_Program(const char* program, const char* command);
-int Spawn_With_Path(const char *program, const char *command, const char *path);
+bool Ends_With(const char *name, const char *suffix);
+int Spawn_Program(const char* program, const char* command, bool bg);
+int Spawn_With_Path(const char *program, const char *command, const char *path, bool bg);
 int Wait(int pid);
 int Get_PID(void);
 int getcwd(char* buf, int size);

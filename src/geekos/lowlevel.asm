@@ -91,9 +91,9 @@ INTERRUPT_STATE_SIZE equ 64
  	push	dword [g_currentThread]
  	call	Setup_Frame
  	add	esp, 8
-; 	push	esp
-; 	call	Print_IS
-; 	add	esp, 4
+ ;	push	esp
+ ;	call	Print_IS
+ ;	add	esp, 4
 %endmacro
 	
 ; Number of bytes between the top of the stack and
@@ -154,6 +154,8 @@ IMPORT Check_Pending_Signal
 
 ; Function that sets up the stack frame to invoke a signal handler
 IMPORT Setup_Frame
+
+IMPORT Print_IS
 
 ; Sizes of interrupt handler entry points for interrupts with
 ; and without error codes.  The code in idt.c uses this

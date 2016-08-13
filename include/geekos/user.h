@@ -11,12 +11,30 @@
 #ifndef GEEKOS_USER_H
 #define GEEKOS_USER_H
 
+/* Information communicated by the PS system call */
+
+#define MAX_PROC_NAME_SZB 128
+
+struct Process_Info {
+	char name[MAX_PROC_NAME_SZB];
+	int pid;
+	int parent_pid; /* 0 if no parent */
+	int priority;
+#define STATUS_RUNNABLE 0
+#define STATUS_BLOCKED  1
+#define STATUS_ZOMBIE   2
+	int status;
+};
+
+#ifdef GEEKOS
+
 #include <geekos/ktypes.h>
 #include <geekos/segment.h>
 #include <geekos/elf.h>
 #include <geekos/paging.h>
 #include <geekos/fileio.h>
 #include <geekos/vfs.h>
+#include <geekos/signal.h>
 
 struct File;
 
@@ -81,6 +99,11 @@ struct User_Context {
     /* Current directory */
     struct path pwd;
     //struct VFS_Dir_Entry;
+    int signal;
+    signal_handler saHandler[MAXSIG+1];
+    signal_handler dflHandler;
+    signal_handler ignHandler;
+    signal_handler returnSignal;
 
 };
 
@@ -93,7 +116,7 @@ struct Interrupt_State;
 
 void Attach_User_Context(struct Kernel_Thread* kthread, struct User_Context* context);
 void Detach_User_Context(struct Kernel_Thread* kthread);
-int Spawn(const char *program, const char *command, struct Kernel_Thread **pThread);
+int Spawn(const char *program, const char *command, struct Kernel_Thread **pThread, bool detached);
 void Switch_To_User_Context(struct Kernel_Thread* kthread, struct Interrupt_State* state);
 
 /*
@@ -109,4 +132,7 @@ bool Copy_To_User(ulong_t destInUser, void* srcInKernel, ulong_t bufSize);
 void Switch_To_Address_Space(struct User_Context *userContext);
 
 
+#endif  /* GEEKOS */
+
 #endif  /* GEEKOS_USER_H */
+

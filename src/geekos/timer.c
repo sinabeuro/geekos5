@@ -14,13 +14,17 @@
 #include <geekos/irq.h>
 #include <geekos/kthread.h>
 #include <geekos/timer.h>
+#include <geekos/signal.h>
 
-#define MAX_TIMER_EVENTS	100
+#define __VBOX__
+#define MAX_TIMER_EVENTS	1
 
 static int timerDebug = 0;
-static int timeEventCount;
+static uint_t timeEventCount;
 static int nextEventID;
 timerEvent pendingTimerEvents[MAX_TIMER_EVENTS];
+static uint_t front = -1;
+static uint_t rear = -1;
 
 /*
  * Global tick counter
@@ -52,7 +56,11 @@ int g_Quantum = DEFAULT_MAX_TICKS;
  * Ticks per second.
  * FIXME: should set this to something more reasonable, like 100.
  */
+#ifdef __VBOX__
 #define TICKS_PER_SEC 1000
+#elif defined __BOCHS__
+#define TICKS_PER_SEC 18
+#endif
 
 //#define DEBUG_TIMER
 #ifdef DEBUG_TIMER
@@ -85,10 +93,18 @@ static void Timer_Interrupt_Handler(struct Interrupt_State* state)
 			if (timerDebug) Print("timer: event %d expired (%d ticks)\n", 
 			        pendingTimerEvents[i].id, pendingTimerEvents[i].origTicks);
 
-			if(pendingTimerEvents[i].callBack){
-				//(pendingTimerEvents[i].callBack)(pendingTimerEvents[i].id);
-				pendingTimerEvents[i].id = -1;
+			#if 1
+			struct Kernel_Thread* kthread = 0;
+			kthread = Lookup_Thread(pendingTimerEvents[i].pid, false);
+			Send_Signal(kthread, SIGALRM);
+			if(kthread->blocked == true){
+				Wake_Up_Process(kthread);
 			}
+			if(Get_Current()->pid != kthread->owner) kthread->refCount-- ; /* deref */
+			#endif
+			//(pendingTimerEvents[i].callBack)(pendingTimerEvents[i].id);
+			//pendingTimerEvents[i].id = -1;
+
 		} 
 		else {
 		    pendingTimerEvents[i].ticks--;
@@ -209,14 +225,18 @@ void Init_Timer(void)
      * In bochs, it defaults to 18Hz, which is actually pretty
      * reasonable.
      */
-	unsigned long val = 1193180/TICKS_PER_SEC;
-	
     Print("Initializing timer...\n");    
-
     /* configure for default clock */
+    #ifdef __VBOX__
+	unsigned long val = 1193180/TICKS_PER_SEC;
     Out_Byte(0x43, 0x36);
     Out_Byte(0x40, val&0xff);
     Out_Byte(0x40, (val>>8)&0xff);
+	#elif defined __BOCHS__
+    Out_Byte(0x43, 0x36);
+    Out_Byte(0x40, 0x00);
+    Out_Byte(0x40, 0x00);
+	#endif
 
     /* Calibrate for delay loop */
     Calibrate_Delay();
@@ -233,17 +253,19 @@ int Start_Timer(int ticks, timerCallback cb)
 
     KASSERT(!Interrupts_Enabled());
 
-    if (timeEventCount == MAX_TIMER_EVENTS) {
-		return -1;
-    } 
-    else {
+    //if (timeEventCount == MAX_TIMER_EVENTS) {
+	//	return -1;
+    //} 
+    //else 
+    {
 		ret = nextEventID++;
-		pendingTimerEvents[timeEventCount].id = ret;
-		pendingTimerEvents[timeEventCount].callBack = cb;
-		pendingTimerEvents[timeEventCount].ticks = ticks;
-		pendingTimerEvents[timeEventCount].origTicks = ticks;
-		pendingTimerEvents[timeEventCount].pid = g_currentThread->pid;
-		timeEventCount++;
+		pendingTimerEvents[0].id = ret;
+		pendingTimerEvents[0].callBack = cb;
+		pendingTimerEvents[0].ticks = ticks;
+		pendingTimerEvents[0].origTicks = ticks;
+		pendingTimerEvents[0].pid = g_currentThread->pid;
+		timeEventCount = 1;
+		//timeEventCount++;
 
 		return ret;
     }

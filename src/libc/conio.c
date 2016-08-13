@@ -22,7 +22,7 @@ history_t history;
 /* System call wrappers. */
 DEF_SYSCALL(Print_String,SYS_PRINTSTRING,int,(const char *str),
     const char *arg0 = str; size_t arg1 = strlen(str);,SYSCALL_REGS_2)
-DEF_SYSCALL(Get_Key,SYS_GETKEY,Keycode,(void),,SYSCALL_REGS_0)
+DEF_SYSCALL(Get_Key,SYS_GETKEY, int,(void),,SYSCALL_REGS_0)
 DEF_SYSCALL(Set_Attr,SYS_SETATTR,int,(int attr),int arg0 = attr;,SYSCALL_REGS_1)
 DEF_SYSCALL(Get_Cursor,SYS_GETCURSOR,int,(int *row, int *col),
     int *arg0 = row; int *arg1 = col;,SYSCALL_REGS_2)

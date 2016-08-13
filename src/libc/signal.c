@@ -36,22 +36,31 @@ extern void Return_Signal(void);
 /* Called when the process has not set a different handler; terminates
    the process. */
 static void Def_Handler(void) {
-  Print("Terminated.\n");
-  Exit(1);
+	Print("Terminated.\n");
+	Exit(1);
 }
 
 static void Ign_Handler(void) {
-  return;
+	Print("Ign_Handler\n");
+	//*((ulong_t *)0x7fffef80) = Return_Signal;
+	//Print("%x, %x\n", 0x7fffef80, *((ulong_t *)0x7fffef80));
+	#if 0
+	int addr = 0;
+	Print("%x : %x, %x : %x \n", &addr, *(&addr), &addr+1, *(&addr + 1));
+	Print("%x : %x, %x : %x \n", &addr+2, *(&addr + 2), &addr+3, *(&addr + 3));
+	Print("%x : %x, %x : %x \n", &addr+4, *(&addr + 4), &addr+5, *(&addr + 5));
+	#endif
+	return;
 }
 
 void Def_Child_Handler(void) {
-  int status;
-  while (WaitNoPID(&status) >= 0);
-  return;
+	int status;
+	while (WaitNoPID(&status) >= 0);
+	return;
 }
 
 /* Should be called when the program starts up */
 int Sig_Init(void) {
-  return RegDeliver(Return_Signal,Def_Handler,Ign_Handler);
+ 	return RegDeliver(Return_Signal,Def_Handler,Ign_Handler);
 }
 

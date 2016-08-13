@@ -13,7 +13,7 @@ int Recurse(int x)
     if (x == 0) return 0;
 
     stuff[0] = x;
-    Print("Calling Recurse %d\n", x);
+    //Print("Calling Recurse %d\n", x);
     return Recurse(x-1) + 1;
 }
 
@@ -23,8 +23,8 @@ int main(int argc, char **argv)
     int depth = 512;
 
     if (argc > 1) {
-	depth = atoi(argv[1]);
-	Print("Depth is %d\n", depth);
+		depth = atoi(argv[1]);
+		Print("Depth is %d\n", depth);
     }
 
     Print("Result is %d\n", Recurse(depth));

@@ -125,8 +125,8 @@ static void Spawn_Init_Process(void)
 {
 	const char *command = INIT_BIN;
 	struct Kernel_Thread **pThread;
-	sh_pid = Spawn(INIT_PROGRAM, command, pThread);
+	sh_pid = Spawn(INIT_PROGRAM, command, pThread, false);
 	
-  	Join(Lookup_Thread(sh_pid));
+  	Join(Lookup_Thread(sh_pid, 1));
     //TODO("Spawn the init process");
 }

@@ -10,7 +10,7 @@
 
 #include <geekos/argblock.h>
 #include <libuser.h>
-
+#include <signal.h>
 int main(int argc, char **argv);
 void Exit(int exitCode);
 
@@ -30,6 +30,18 @@ void _Entry(void)
 
     Init_Heap((void*) startHeap, 256*1024*1024);
 	//Print("%x\n", Malloc(8192));
+
+	#if 1
+    { 
+       	/* Initialize the signal handling trampoline */
+   		int ret = Sig_Init();
+    	if (ret != 0) Exit(ret); 
+
+    	/* Set up the initial SIGCHLD handler */
+    	ret = Signal(Def_Child_Handler,SIGCHLD);
+    	if (ret != 0) Exit(ret);
+    }
+    #endif
 
     /* Call main(), and then exit with whatever value it returns. */
     Exit(main(argBlock->argc, argBlock->argv));
