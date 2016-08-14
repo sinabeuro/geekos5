@@ -732,9 +732,6 @@ void Schedule(void)
      * will "return", and then Schedule() will return to wherever
      * it was called from.
      */
-    if(runnable->pid == 7 &&  runnable->userContext->signal ==5){
-    	Print("pid : %d\n", Get_Current()->pid);
-	}
     Switch_To_Thread(runnable);
 }
 

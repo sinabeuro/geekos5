@@ -42,11 +42,12 @@ static int havemodes = 0;
 #define      BR     B_COLS+1        /* bottom right */
 
 /* These can be overridden by the user. */
-#define DEFAULT_KEYS "jkl pq"
+#define DEFAULT_KEYS "jil pqk"
 #define KEY_LEFT   0
 #define KEY_RIGHT  2
 #define KEY_ROTATE 1
 #define KEY_DROP   3
+#define KEY_DOWN   6
 #define KEY_PAUSE  4
 #define KEY_QUIT   5
 
@@ -64,25 +65,25 @@ int board[B_SIZE], shadow[B_SIZE];
 int *peek_shape;                /* peek preview of next shape */
 int *shape;
 int shapes[] = {
-    7,  TL,  TC,  MR,
-    8,  TR,  TC,  ML,
-    9,  ML,  MR,  BC,
-    3,  TL,  TC,  ML,
-   12,  ML,  BL,  MR,
-   15,  ML,  BR,  MR,
-   18,  ML,  MR,   2,           /* sticks out */
-    0,  TC,  ML,  BL,
-    1,  TC,  MR,  BR,
-   10,  TC,  MR,  BC,
-   11,  TC,  ML,  MR,
-    2,  TC,  ML,  BC,
-   13,  TC,  BC,  BR,
-   14,  TR,  ML,  MR,
-    4,  TL,  TC,  BC,
-   16,  TR,  TC,  BC,
-   17,  TL,  MR,  ML,
-    5,  TC,  BC,  BL,
-    6,  TC,  BC,  2 * B_COLS,   /* sticks out */
+    7,  TL,  TC,  MR, 1,
+    8,  TR,  TC,  ML, 2,
+    9,  ML,  MR,  BC, 3,
+    3,  TL,  TC,  ML, 4,
+   12,  ML,  BL,  MR, 5,
+   15,  ML,  BR,  MR, 6,
+   18,  ML,  MR,   2, 8,          /* sticks out */
+    0,  TC,  ML,  BL, 1,
+    1,  TC,  MR,  BR, 2,
+   10,  TC,  MR,  BC, 3,
+   11,  TC,  ML,  MR, 3,
+    2,  TC,  ML,  BC, 3,
+   13,  TC,  BC,  BR, 5,
+   14,  TR,  ML,  MR, 5,
+    4,  TL,  TC,  BC, 5,
+   16,  TR,  TC,  BC, 6,
+   17,  TL,  MR,  ML, 6,
+    5,  TC,  BC,  BL, 6,
+    6,  TC,  BC,  2 * B_COLS, 8,  /* sticks out */
 };
 
 void alarm_handler (void)
@@ -119,10 +120,10 @@ int update (void)
 
    /* Display piece preview. */
    memset (preview, 0, sizeof(preview));
-   preview[2 * B_COLS + 1] = 7;
-   preview[2 * B_COLS + 1 + peek_shape[1]] = 7;
-   preview[2 * B_COLS + 1 + peek_shape[2]] = 7;
-   preview[2 * B_COLS + 1 + peek_shape[3]] = 7;
+   preview[2 * B_COLS + 1] =  peek_shape[4];
+   preview[2 * B_COLS + 1 + peek_shape[1]] = peek_shape[4];
+   preview[2 * B_COLS + 1 + peek_shape[2]] = peek_shape[4];
+   preview[2 * B_COLS + 1 + peek_shape[3]] = peek_shape[4];
 
    for (y = 0; y < 4; y++)
    {
@@ -132,7 +133,7 @@ int update (void)
          {
             shadow_preview[y * B_COLS + x] = preview[y * B_COLS + x];
             gotoxy (x * 2 + 26 + 28, start + y);
-            Set_Attr(ATTRIB(BLUE, BRIGHT));
+            Set_Attr(ATTRIB(preview[y * B_COLS + x], BRIGHT));
             Print ("\033[%dm  ", preview[y * B_COLS + x]);
             Set_Attr(ATTRIB(BLACK, GRAY));
          }
@@ -149,7 +150,7 @@ int update (void)
          {
             shadow[y * B_COLS + x] = board[y * B_COLS + x];
             gotoxy (x * 2 + 28, y);
-          	Set_Attr(ATTRIB(GRAY , BRIGHT));
+          	Set_Attr(ATTRIB(board[y * B_COLS + x] , BRIGHT));
             Print ("\033[%dm  ", board[y * B_COLS + x]);
            	Set_Attr(ATTRIB(BLACK, GRAY));
          }
@@ -204,7 +205,7 @@ int *next_shape (void)
 {
    int *next = peek_shape;
 
-   peek_shape = &shapes[rand () % 7 * 4];
+   peek_shape = &shapes[rand () % 7 * 5];
    if (!next)
    {
       return next_shape ();
@@ -246,14 +247,16 @@ void show_online_help (void)
    gotoxy (26 + 28, start);
    Print("j     - left");
    gotoxy (26 + 28, start + 1);
-   Print("k     - rotate");
+   Print("i     - rotate");
    gotoxy (26 + 28, start + 2);
    Print("l     - right");
    gotoxy (26 + 28, start + 3);
+   Print("k     - down");
+   gotoxy (26 + 28, start + 4); 
    Print("space - drop");
-   gotoxy (26 + 28, start + 4);
-   Print("p     - pause");
    gotoxy (26 + 28, start + 5);
+   Print("p     - pause");
+   gotoxy (26 + 28, start + 6);
    Print("q     - quit");
 }
 
@@ -352,7 +355,7 @@ int main (int argc __attribute__ ((unused)), char *argv[] __attribute__ ((unused
 	     }
 	     else
 	     {
-	        place (shape, pos, 7);
+	        place (shape, pos, shape[4]);
 	        ++points;
 	        for (j = 0; j < 252; j = B_COLS * (j / B_COLS + 1))
 	        {
@@ -382,7 +385,7 @@ int main (int argc __attribute__ ((unused)), char *argv[] __attribute__ ((unused
 	  if (c == keys[KEY_ROTATE])
 	  {
 	     backup = shape;
-	     shape = &shapes[4 * *shape]; /* Rotate */
+	     shape = &shapes[5 * *shape]; /* Rotate */
 	     /* Check if it fits, if not restore shape from backup */
 	     if (!fits_in (shape, pos))
 	        shape = backup;
@@ -425,8 +428,9 @@ int main (int argc __attribute__ ((unused)), char *argv[] __attribute__ ((unused
 	     //sigprocmask (SIG_UNBLOCK, &set, NULL);
 	  }
 
-	  place (shape, pos, 7);
+	  place (shape, pos, shape[4]);
 	  c = update ();
+	  if(c == keys[KEY_DOWN]) c = -1;
 	  place (shape, pos, 0);
 	}
 
