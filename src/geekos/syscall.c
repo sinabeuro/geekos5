@@ -657,11 +657,23 @@ static void Sys_Usleep(struct Interrupt_State *state)
 	//Start_Timer(state->ebx, NULL);
 }
 
-static void Sys_Alarm(struct Interrupt_State *state)
+static int Sys_Alarm(struct Interrupt_State *state)
 {
+	static int i =0;
+	volatile void **p = 0;
+	volatile char* userStackPtr = 0;
 	//Print("in systemcall! : %x\n", USER_BASE_ADDR+state->ecx);  /* weak */
 	Set_Handler(Get_Current(), SIGALRM, state->ecx);
 	Start_Timer(state->ebx, NULL); /* weak */
+	//Print("received signal: (%d), %d\n", i++, g_preemptionDisabled);
+
+	p = (void **)(((struct Interrupt_State *)state)+1);
+	userStackPtr = (char*)(USER_BASE_ADDR + (unsigned int)p[0]);
+	
+	//dump_stack(userStackPtr, 0);
+
+	//g_preemptionDisabled = 1;
+	return 0;
 }
 
 static void Sys_SysInfo(struct Interrupt_State *state)
@@ -757,6 +769,7 @@ static int Sys_RegDeliver(struct Interrupt_State* state)
 static int Sys_ReturnSignal(struct Interrupt_State* state)
 {
 	struct Kernel_Thread* kthread = Get_Current();
+	//Print("return signal\n");
 	Complete_Handler(kthread, state);
 	return -1;
     //TODO("Sys_ReturnSignal system call");
@@ -773,7 +786,7 @@ static int Sys_WaitNoPID(struct Interrupt_State* state)
 	int status = 0;
 	Print("Sys_WaitNoPID : %x\n", state->ebx);
 	status = 0x7;
-	Copy_To_User(state->ebx, &status, sizeof(int));
+	Copy_To_User(state->ebx, &status, sizeof(int));
 	return -1;
 	//WaitNoPID(&status);
     //TODO("Sys_WaitNoPID system call");

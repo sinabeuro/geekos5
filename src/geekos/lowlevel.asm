@@ -323,12 +323,11 @@ Handle_Interrupt:
 	mov	[g_needReschedule], dword 0
 
 .restore:
+	Activate_User_Context
+
 	Process_Signal .finish
 	
 .finish:	
-	; Activate the user context, if necessary.
-	Activate_User_Context
-
 	; Restore registers
 	Restore_Registers
 

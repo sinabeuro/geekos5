@@ -163,6 +163,8 @@ void Switch_To_User_Context(struct Kernel_Thread* kthread, struct Interrupt_Stat
 	Set_Kernel_Stack_Pointer(((ulong_t)kthread->stackPage) + PAGE_SIZE);
 	//Print("Switch_To_User_Context %x\n", kthread->userContext->entryAddr);
 	Switch_To_Address_Space(kthread->userContext);
+	//if(kthread->pid == 8)
+	//	Print("Switch_To_User_Context, %x, %x\n", 0xffffef84, *((ulong_t *)0xffffef84));
 
 }
 

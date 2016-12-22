@@ -63,8 +63,8 @@ int main(int argc, char **argv)
 	Add_History_Item(&history, "touch /d/test");
 	Add_History_Item(&history, "mkdir /d/new");
 	Add_History_Item(&history, "ls /d/new");
+	Add_History_Item(&history, "b &");
 	Add_History_Item(&history, "null &");
-	Add_History_Item(&history, "kill 7 1");
 
 	/* Set attribute to gray on black. */
 	Print("\x1B[37m");

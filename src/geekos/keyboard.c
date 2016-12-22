@@ -331,11 +331,11 @@ Keycode Wait_For_Key(void)
     iflag = Begin_Int_Atomic();
 
     do {
-	gotKey = !Is_Queue_Empty();
-	if (gotKey)
-	    keycode = Dequeue_Keycode();
-	else
-	    Wait(&s_waitQueue);
+		gotKey = !Is_Queue_Empty();
+		if (gotKey)
+		    keycode = Dequeue_Keycode();
+		else
+		    Wait(&s_waitQueue);
     }
     while (!gotKey);
 

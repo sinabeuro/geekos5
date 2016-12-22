@@ -27,7 +27,7 @@
 #include <conio.h>
 #include <libuser.h>
 #include "tetris.h"
-#include "tconio.h"
+#include "uconio.h"
 
 //static struct termios savemodes;
 static int havemodes = 0;
@@ -53,7 +53,7 @@ static int havemodes = 0;
 
 #define HIGH_SCORE_FILE "/var/games/tetris.scores"
 #define TEMP_SCORE_FILE "/tmp/tetris-tmp.scores"
-#define ENABLE_PREVIEW
+#define ENABLE_PREVIEW
 #define ENABLE_SCORE
 
 char *keys = DEFAULT_KEYS;
@@ -90,10 +90,9 @@ void alarm_handler (void)
 {
 	static long freq = 500;
 	long temp = freq;
-	//Print("TEST ALARM HANDLER!\n");
+
 	for(int i = 1; i < level; i++)
 		temp = temp*8/10;
-		
 	alarm(temp, alarm_handler);
 #if 0
    static long h[4];
@@ -316,7 +315,7 @@ int main (int argc __attribute__ ((unused)), char *argv[] __attribute__ ((unused
 	ptr = board;
 	for (i = B_SIZE; i; i--)
 	{
-	  *ptr++ = i < 25 || i % B_COLS < 2 ? 7 : 0;
+	  *ptr++ = i < 25 || i % B_COLS < 2 ? WHITE : 0;
 	}
 
 	srand ((unsigned int)Get_Time_Of_Day ());
@@ -373,8 +372,13 @@ int main (int argc __attribute__ ((unused)), char *argv[] __attribute__ ((unused
 	           }
 	        }
 	        shape = next_shape ();
-	        if (!fits_in (shape, pos = 17))
-	           c = keys[KEY_QUIT];
+	        if (!fits_in (shape, pos = 17)){
+	            textattr(RESETATTR);
+   				gotoxy (26 + 10, 10);
+   				Print("GAME OVER");
+				while (Get_Key() < 0);
+	        	c = keys[KEY_QUIT];
+	        }
 	     }
 	  }
 	  if (c == keys[KEY_LEFT])

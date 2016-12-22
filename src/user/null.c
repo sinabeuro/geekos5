@@ -9,7 +9,9 @@ int main(int argc, char** argv)
 
   Null();
 
-  for(;;);
+  for(;;) {
+  	;//Print("THIS IS NULL\n");
+  }
 
   return 0;
 }

@@ -92,19 +92,20 @@ static void Timer_Interrupt_Handler(struct Interrupt_State* state)
 		if (pendingTimerEvents[i].ticks <= 0) {
 			if (timerDebug) Print("timer: event %d expired (%d ticks)\n", 
 			        pendingTimerEvents[i].id, pendingTimerEvents[i].origTicks);
-
 			#if 1
 			struct Kernel_Thread* kthread = 0;
 			kthread = Lookup_Thread(pendingTimerEvents[i].pid, false);
+
 			Send_Signal(kthread, SIGALRM);
 			if(kthread->blocked == true){
+				//Print("blocked\n");
 				Wake_Up_Process(kthread);
 			}
-			if(Get_Current()->pid != kthread->owner) kthread->refCount-- ; /* deref */
+			if(current->pid != kthread->owner) kthread->refCount-- ; /* deref */
 			#endif
 			//(pendingTimerEvents[i].callBack)(pendingTimerEvents[i].id);
-			//pendingTimerEvents[i].id = -1;
-
+			pendingTimerEvents[i].id = -1;
+			//g_needReschedule = true;
 		} 
 		else {
 		    pendingTimerEvents[i].ticks--;
@@ -128,8 +129,6 @@ static void Timer_Interrupt_Handler(struct Interrupt_State* state)
         }
 
     }
-
-
     End_IRQ(state);
 }
 
@@ -263,7 +262,7 @@ int Start_Timer(int ticks, timerCallback cb)
 		pendingTimerEvents[0].callBack = cb;
 		pendingTimerEvents[0].ticks = ticks;
 		pendingTimerEvents[0].origTicks = ticks;
-		pendingTimerEvents[0].pid = g_currentThread->pid;
+		pendingTimerEvents[0].pid = Get_Current()->pid;
 		timeEventCount = 1;
 		//timeEventCount++;
 

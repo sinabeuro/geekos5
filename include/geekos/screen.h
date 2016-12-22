@@ -12,7 +12,7 @@
 
 #include <geekos/ktypes.h>
 
-#define BLACK   0
+#define BLACK	0
 #define BLUE    1
 #define GREEN   2
 #define CYAN    3
@@ -21,6 +21,14 @@
 #define AMBER   6
 #define GRAY    7
 #define BRIGHT  8
+#define LBLUE   9
+#define LGREEN  10
+#define LCYAN   11
+#define LRED    12
+#define LMAGENTA 13
+#define YELLOW	14
+#define WHITE	15
+
 #define ATTRIB(bg,fg) ((fg)|((bg)<<4))
 
 #define NUMCOLS 80

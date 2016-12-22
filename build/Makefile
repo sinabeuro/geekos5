@@ -113,7 +113,7 @@ USER_C_SRCS := \
 	ls.c touch.c tstwrite.c type.c mkdir.c sync.c cp.c rm.c\
 	format.c mount.c cat.c p5test.c \
 	shell.c b.c c.c stat.c opendir.c \
-	sokoban.c gv_test.c tetris.c sigtest.c ps.c kill.c
+	sokoban.c gv_test.c tetris.c sigtest.c ps.c kill.c snake.c
 # User executables
 USER_PROGS := $(USER_C_SRCS:%.c=user/%.exe)
 
@@ -190,7 +190,7 @@ GENERRS := $(PERL) $(PROJECT_ROOT)/scripts/generrs
 # ----------------------------------------------------------------------
 
 # Flags used for all C source files
-GENERAL_OPTS := -O -Wall $(EXTRA_C_OPTS) -fno-stack-protector -fno-omit-frame-pointer -std=c99
+GENERAL_OPTS := -O -Wall $(EXTRA_C_OPTS) -fno-omit-frame-pointer -fno-stack-protector -z execstack -std=c99
 CC_GENERAL_OPTS := $(GENERAL_OPTS) #-Werror 
 
 # Flags used for kernel C source files

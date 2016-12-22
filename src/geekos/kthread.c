@@ -731,7 +731,7 @@ void Schedule(void)
      * Eventually, this thread will get re-activated and Switch_To_Thread()
      * will "return", and then Schedule() will return to wherever
      * it was called from.
-     */
+     */
     Switch_To_Thread(runnable);
 }
 
@@ -835,12 +835,12 @@ struct Kernel_Thread* Lookup_Thread(int pid, int notOwner)
 
     result = Get_Front_Of_All_Thread_List(&s_allThreadList);
     while (result != 0) {
-	if (result->pid == pid) {
-	    if (g_currentThread != result->owner && !notOwner)
-			result->refCount++; /* must be unref */
-	    break;
-	}
-	result = Get_Next_In_All_Thread_List(result);
+		if (result->pid == pid) {
+		    if (g_currentThread != result->owner && !notOwner)
+				result->refCount++; /* must be unref */
+		    break;
+		}
+		result = Get_Next_In_All_Thread_List(result);
     }
 
     End_Int_Atomic(iflag);
@@ -867,7 +867,7 @@ void Wait(struct Thread_Queue* waitQueue)
     /* Add the thread to the wait queue. */
     current->blocked = true;
     Enqueue_Thread(waitQueue, current);
-    Get_Current()->waitQueue = waitQueue; /* restore queue reference */ 
+    Get_Current()->waitQueue = waitQueue; /* Restore queue reference */ 
     /* Find another thread to run. */
     Schedule();
 }
