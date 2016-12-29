@@ -323,6 +323,7 @@ Handle_Interrupt:
 	mov	[g_needReschedule], dword 0
 
 .restore:
+	; Activate the user context, if necessary.
 	Activate_User_Context
 
 	Process_Signal .finish
@@ -395,12 +396,12 @@ Switch_To_Thread:
 	mov	[g_currentThread], eax
 	mov	esp, [eax+0]
 
-	Process_Signal .complete
-	
-.complete:	
 	; Activate the user context, if necessary.
 	Activate_User_Context
 
+	Process_Signal .complete
+
+.complete:
 	; Restore general purpose and segment registers, and clear interrupt
 	; number and error code.
 	Restore_Registers

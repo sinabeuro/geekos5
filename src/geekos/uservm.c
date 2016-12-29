@@ -349,6 +349,20 @@ int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
 	return 0;
 }
 
+ulong_t Get_User_Address(ulong_t kernelAddr)
+{
+	/* need to impl boundary check routine*/
+
+	return (void*)(USER_BASE_ADDR + kernelAddr);
+}
+
+ulong_t Get_Kernel_Address(ulong_t userAddr)
+{
+	/* need to impl boundary check routine*/
+
+	return (void*)(userAddr - USER_BASE_ADDR);
+}
+
 /*
  * Copy data from user buffer into kernel buffer.
  * Returns true if successful, false otherwise.
@@ -373,13 +387,11 @@ bool Copy_From_User(void* destInKernel, ulong_t srcInUser, ulong_t numBytes)
      * interrupts are disabled; because no other process can run,
      * the page is guaranteed not to be stolen.
      */
-    //Print("Source address : %x\n", srcInUser); 
-    //KASSERT(PAGE_ADDR(USER_BASE_ADDR + srcInUser))
+
     struct User_Context* userContext = g_currentThread->userContext;
-	//struct Page* page = Get_Page(USER_BASE_ADDR + srcInUser);
 
 	KASSERT(!Interrupts_Enabled());
-    memcpy(destInKernel, (void*)(USER_BASE_ADDR + srcInUser), numBytes); // because kernel mode
+    memcpy(destInKernel, (void*)Get_User_Address(srcInUser), numBytes); // because kernel mode
 
     return true;    
     //TODO("Copy user data to kernel buffer");
@@ -391,7 +403,7 @@ bool Copy_String_From_User(void* destInKernel, ulong_t srcInUser)
   	struct User_Context* userContext = g_currentThread->userContext;
   	
 	KASSERT(!Interrupts_Enabled());
-    strcpy(destInKernel, (void*)(USER_BASE_ADDR + srcInUser)); // because kernel mode
+    strcpy(destInKernel, (void*)Get_User_Address(srcInUser)); // because kernel mode
 
     return true;
 }
@@ -411,11 +423,10 @@ bool Copy_To_User(ulong_t destInUser, void* srcInKernel, ulong_t numBytes)
      */
 	struct User_Context* userContext = g_currentThread->userContext;
 	
-	memcpy((void*)(USER_BASE_ADDR + destInUser), srcInKernel, numBytes);
-	//Print("%x, %x\n", (USER_BASE_ADDR + destInUser), srcInKernel);
+	memcpy((void*)Get_User_Address(destInUser), srcInKernel, numBytes);
 	return true;
      
-    //TODO("Copy kernel data to user buffer");
+	//TODO("Copy kernel data to user buffer");
 }
 
 /*
@@ -430,12 +441,7 @@ void Switch_To_Address_Space(struct User_Context *userContext)
      */
 
 	Load_LDTR(userContext->ldtSelector);
-	//Print("%x, %x\n", 0xffffef80, *((ulong_t *)0xffffef80));
 	Set_PDBR(userContext->pageDir);
-	//Print("%x, %x\n", 0x7fffef80, *((ulong_t *)0x7fffef80));
-	//Print("0x1000: %x\n", *(int*)(0x34000));
-
-	
 }
 
 

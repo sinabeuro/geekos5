@@ -127,6 +127,7 @@ void Destroy_User_Context(struct User_Context* context);
 int Load_User_Program(char *exeFileData, ulong_t exeFileLength,
     struct Exe_Format *exeFormat, const char *command,
     struct User_Context **pUserContext);
+ulong_t Get_User_Address(ulong_t srcInUser);
 bool Copy_From_User(void* destInKernel, ulong_t srcInUser, ulong_t bufSize);
 bool Copy_To_User(ulong_t destInUser, void* srcInKernel, ulong_t bufSize);
 void Switch_To_Address_Space(struct User_Context *userContext);

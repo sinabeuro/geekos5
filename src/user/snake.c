@@ -452,7 +452,7 @@ int main (void)
 	#if 0
 	if (WEXITSTATUS(system ("stty cbreak -echo stop u")))
 	{
-	  fPrint (stderr, "Failed setting up the screen, is 'stty' missing?\n");
+	  Print (stderr, "Failed setting up the screen, is 'stty' missing?\n");
 	  return 1;
 	}
 	#endif
@@ -471,7 +471,7 @@ int main (void)
 		do
 		{
 			 keypress = (char)Get_Key ();
-		    Print("key : %d\n", keypress);
+			 //Print("key : %d\n", keypress);
 			 /* Move the snake one position. */
 			 move (&snake, keys, keypress);
 
